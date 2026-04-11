@@ -8,6 +8,7 @@ import {
 import type { Hotspot } from '../../types';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
+import { formatRelativeTime } from '../../utils/date';
 
 interface HotspotCardProps {
   hotspot: Hotspot;
@@ -21,6 +22,7 @@ const sourceLabels: Record<string, string> = {
   weibo: '微博',
   baidu: '百度',
   zhihu: '知乎',
+  sogou: '搜狗',
   search: '搜索',
   api: 'API',
 };
@@ -113,12 +115,7 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
 
             {/* Date */}
             <span className="text-xs text-[#6b7280]">
-              {new Date(hotspot.created_at).toLocaleString('zh-CN', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {formatRelativeTime(hotspot.published_at || hotspot.created_at)}
             </span>
           </div>
         </div>

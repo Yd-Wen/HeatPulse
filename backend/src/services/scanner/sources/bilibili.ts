@@ -1,8 +1,36 @@
 import axios from 'axios';
 import type { SourceResult } from '../../../types';
-import { getRandomUserAgent, isAccountQuery, parseAccountQuery } from './index';
+import { getRandomUserAgent, isAccountQuery, parseAccountQuery, randomDelay } from './index';
 
 const BASE_URL = 'https://api.bilibili.com';
+
+// 生成 buvid3 Cookie (B站反爬虫需要)
+function generateBuvid3(): string {
+  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  return `${uuid}infoc`;
+}
+
+// 获取 B站请求头
+function getBilibiliHeaders(): Record<string, string> {
+  const buvid3 = generateBuvid3();
+  return {
+    'User-Agent': getRandomUserAgent(),
+    'Referer': 'https://search.bilibili.com/',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Cookie': `buvid3=${buvid3}`,
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'Origin': 'https://search.bilibili.com',
+  };
+}
 
 // 获取 B站热门视频
 export async function fetchBilibiliHot(keyword?: string): Promise<SourceResult[]> {
@@ -24,11 +52,13 @@ export async function fetchBilibiliHot(keyword?: string): Promise<SourceResult[]
 // 获取热门视频列表
 async function fetchBilibiliPopular(): Promise<SourceResult[]> {
   try {
+    await randomDelay(500, 1500);
+
+    const headers = getBilibiliHeaders();
+    headers['Referer'] = 'https://www.bilibili.com';
+
     const response = await axios.get(`${BASE_URL}/x/web-interface/popular`, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Referer': 'https://www.bilibili.com',
-      },
+      headers,
       params: { ps: 20 },
       timeout: 10000
     });
@@ -58,18 +88,11 @@ async function fetchBilibiliPopular(): Promise<SourceResult[]> {
 // 搜索视频
 async function searchBilibiliVideos(keyword: string): Promise<SourceResult[]> {
   try {
+    // 添加延迟避免触发反爬虫
+    await randomDelay(1000, 3000);
+
     const response = await axios.get(`${BASE_URL}/x/web-interface/search/type`, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Referer': 'https://search.bilibili.com',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-site',
-      },
+      headers: getBilibiliHeaders(),
       params: {
         keyword,
         search_type: 'video',
@@ -109,14 +132,11 @@ async function searchBilibiliVideos(keyword: string): Promise<SourceResult[]> {
 // 获取 B站用户信息
 async function fetchBilibiliUserInfo(username: string): Promise<SourceResult[]> {
   try {
+    await randomDelay(1000, 2000);
+
     // 先搜索用户
     const searchResponse = await axios.get(`${BASE_URL}/x/web-interface/search/type`, {
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Referer': 'https://search.bilibili.com',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-      },
+      headers: getBilibiliHeaders(),
       params: {
         keyword: username,
         search_type: 'bili_user',

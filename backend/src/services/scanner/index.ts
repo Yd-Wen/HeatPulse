@@ -191,8 +191,10 @@ export const scannerService = {
             ai_tags: analysis.tags
           });
 
-          // 如果有匹配的关键词且设置了通知邮箱，发送邮件
-          if (matchedKeyword?.notify_email) {
+          // 确定通知邮箱：优先使用关键词的 notify_email，否则使用全局 NOTIFY_EMAIL
+          const notifyEmail = matchedKeyword?.notify_email || process.env.NOTIFY_EMAIL;
+
+          if (notifyEmail) {
             try {
               const { sendHotspotEmail } = await import('../email');
               // 转换 ai_tags 为数组格式
@@ -200,8 +202,8 @@ export const scannerService = {
                 ...hotspot,
                 ai_tags: hotspot.ai_tags ? JSON.parse(hotspot.ai_tags) : undefined
               };
-              await sendHotspotEmail(matchedKeyword.notify_email, hotspotForEmail);
-              console.log(`[Scanner] Email sent to ${matchedKeyword.notify_email}`);
+              await sendHotspotEmail(notifyEmail, hotspotForEmail);
+              console.log(`[Scanner] Email sent to ${notifyEmail}`);
             } catch (emailError) {
               console.error('[Scanner] Failed to send email:', (emailError as Error).message);
             }

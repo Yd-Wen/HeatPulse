@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { SourceResult } from '../../../types';
 import { getRandomUserAgent, isAccountQuery, parseAccountQuery } from './index';
 
-const API_BASE_URL = 'https://api.twitterapi.io/api';
+const API_BASE_URL = 'https://api.twitterapi.io';
 
 // 获取 Twitter API Key
 function getApiKey(): string {
@@ -35,7 +35,7 @@ export async function fetchTwitterSearch(keyword: string): Promise<SourceResult[
 // 搜索推文
 async function fetchTwitterTweets(query: string): Promise<SourceResult[]> {
   try {
-    const response = await axios.get(`${API_BASE_URL}/twitter/tweet/advanced_search`, {
+    const response = await axios.get(`${API_BASE_URL}/twitter/tweet/advanced_search?queryType=Latest`, {
       headers: {
         'X-API-Key': getApiKey(),
         'Accept': 'application/json'

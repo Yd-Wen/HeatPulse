@@ -43,7 +43,13 @@ export interface Stats {
 
 export interface ScanStatus {
   is_scanning: boolean;
-  last_scan?: string;
+  last_scan?: {
+    id: number;
+    started_at: string;
+    ended_at: string;
+    status: string;
+    hotspots_found: number;
+  };
   next_scan?: string;
 }
 

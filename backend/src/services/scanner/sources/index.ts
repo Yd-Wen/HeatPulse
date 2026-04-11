@@ -1,7 +1,7 @@
 import type { SourceResult } from '../../../types';
-import { fetchWeiboHotSearch } from './web';
 import { fetchBilibiliHot } from './bilibili';
 import { fetchTwitterSearch } from './twitter';
+import { searchSogou } from './sogou';
 
 // 判断是否为账号查询（以 @ 开头）
 export function isAccountQuery(keyword: string): boolean {
@@ -52,25 +52,7 @@ export async function fetchAllSources(keywords: string[]): Promise<SourceResult[
     const isAccount = isAccountQuery(keyword);
 
     try {
-      // 1. 获取微博热搜（仅非账号查询）
-      if (!isAccount) {
-        try {
-          const weiboResults = await fetchWeiboHotSearch();
-          // 过滤与关键词相关的内容
-          const filtered = weiboResults.filter(r =>
-            keyword.split(/\s+/).some(kw =>
-              r.title.toLowerCase().includes(kw.toLowerCase()) ||
-              r.summary.toLowerCase().includes(kw.toLowerCase())
-            )
-          );
-          results.push(...filtered);
-          await randomDelay(2000, 4000);
-        } catch (e) {
-          errors.push(`Weibo: ${(e as Error).message}`);
-        }
-      }
-
-      // 2. B站热门/搜索
+      // 1. B站热门/搜索
       try {
         const parsed = isAccount ? parseAccountQuery(keyword) : null;
         const platform = parsed?.platform;
@@ -85,7 +67,7 @@ export async function fetchAllSources(keywords: string[]): Promise<SourceResult[
         errors.push(`Bilibili: ${(e as Error).message}`);
       }
 
-      // 3. Twitter/X 搜索
+      // 2. Twitter/X 搜索
       try {
         const parsed = isAccount ? parseAccountQuery(keyword) : null;
         const platform = parsed?.platform;
@@ -98,6 +80,17 @@ export async function fetchAllSources(keywords: string[]): Promise<SourceResult[
         await randomDelay(10000, 15000); // Twitter API 限制较严格
       } catch (e) {
         errors.push(`Twitter: ${(e as Error).message}`);
+      }
+
+      // 3. 搜狗搜索（仅非账号查询）
+      if (!isAccount) {
+        try {
+          const sogouResults = await searchSogou(keyword, 10);
+          results.push(...sogouResults);
+          await randomDelay(3000, 5000);
+        } catch (e) {
+          errors.push(`Sogou: ${(e as Error).message}`);
+        }
       }
     } catch (error) {
       errors.push(`Keyword "${keyword}": ${(error as Error).message}`);

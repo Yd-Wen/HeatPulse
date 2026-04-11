@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -17,6 +18,7 @@ import { RealtimeIndicator } from '../components/hotspots/RealtimeIndicator';
 import type { Stats, Hotspot, ScanStatus } from '../types';
 import { statsApi, hotspotsApi, scanApi, keywordsApi } from '../api/client';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { formatRelativeTime } from '../utils/date';
 
 export function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -27,6 +29,7 @@ export function Dashboard() {
   const [quickKeyword, setQuickKeyword] = useState('');
   const [adding, setAdding] = useState(false);
   const [addSuccess, setAddSuccess] = useState(false);
+  const navigate = useNavigate();
 
   const { connected, lastMessage } = useWebSocket();
 
@@ -236,8 +239,8 @@ export function Dashboard() {
             </span>
           </div>
           <div className="text-sm text-[#6b7280]">
-            {scanStatus.last_scan && (
-              <span>上次扫描: {new Date(scanStatus.last_scan).toLocaleString('zh-CN')}</span>
+            {scanStatus.last_scan?.ended_at && (
+              <span>上次扫描: {formatRelativeTime(scanStatus.last_scan.ended_at)}</span>
             )}
           </div>
         </Card>
@@ -247,7 +250,7 @@ export function Dashboard() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-[#f0f0f5]">最新热点</h2>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/hotspots')}>
             <TrendingUp className="w-4 h-4 mr-1" />
             查看全部
           </Button>
