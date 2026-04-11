@@ -53,3 +53,5 @@ coverage/
 
 # OS files
 Thumbs.db
+
+.claude/
