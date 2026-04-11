@@ -7,13 +7,15 @@ import {
   TrendingUp,
   RefreshCw,
   Play,
+  Plus,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
+import { Input } from '../components/common/Input';
 import { HotspotList } from '../components/hotspots/HotspotList';
 import { RealtimeIndicator } from '../components/hotspots/RealtimeIndicator';
 import type { Stats, Hotspot, ScanStatus } from '../types';
-import { statsApi, hotspotsApi, scanApi } from '../api/client';
+import { statsApi, hotspotsApi, scanApi, keywordsApi } from '../api/client';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export function Dashboard() {
@@ -22,6 +24,9 @@ export function Dashboard() {
   const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [triggering, setTriggering] = useState(false);
+  const [quickKeyword, setQuickKeyword] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addSuccess, setAddSuccess] = useState(false);
 
   const { connected, lastMessage } = useWebSocket();
 
@@ -58,15 +63,38 @@ export function Dashboard() {
     }
   };
 
-  const handleTriggerScan = async () => {
+  const handleQuickScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickKeyword.trim()) return;
+
+    try {
+      setAdding(true);
+      // 先创建临时关键词
+      const keyword = await keywordsApi.create(quickKeyword.trim());
+      // 只扫描这个关键词
+      await scanApi.trigger([keyword.id]);
+      setQuickKeyword('');
+      setAddSuccess(true);
+      // 刷新统计数据
+      const statsData = await statsApi.get();
+      setStats(statsData);
+      setTimeout(() => setAddSuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to quick scan:', error);
+      alert('扫描失败，请重试');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleScanAll = async () => {
     try {
       setTriggering(true);
       await scanApi.trigger();
-      // Refresh status after triggering
       const status = await scanApi.getStatus();
       setScanStatus(status);
     } catch (error) {
-      console.error('Failed to trigger scan:', error);
+      console.error('Failed to scan all:', error);
     } finally {
       setTriggering(false);
     }
@@ -97,7 +125,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -109,12 +137,12 @@ export function Dashboard() {
         <div className="flex items-center gap-3">
           <RealtimeIndicator connected={connected} />
           <Button
-            onClick={handleTriggerScan}
+            onClick={handleScanAll}
             loading={triggering}
             variant="secondary"
           >
             <Play className="w-4 h-4" />
-            立即扫描
+            开始扫描
           </Button>
           <Button
             onClick={loadData}
@@ -125,6 +153,39 @@ export function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Quick Scan */}
+      <Card className="bg-gradient-to-r from-[#1a1a25] to-[#0f0f15] border border-[#2a2a3a]">
+        <form onSubmit={handleQuickScan} className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Input
+              placeholder="输入关键词快速搜索热点..."
+              value={quickKeyword}
+              onChange={(e) => setQuickKeyword(e.target.value)}
+              disabled={adding}
+              className="w-full"
+            />
+            {addSuccess && (
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-green-400 text-sm"
+              >
+                扫描中...
+              </motion.span>
+            )}
+          </div>
+          <Button
+            type="submit"
+            loading={adding}
+            disabled={!quickKeyword.trim()}
+            className="sm:w-auto"
+          >
+            <Zap className="w-4 h-4" />
+            立即扫描
+          </Button>
+        </form>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

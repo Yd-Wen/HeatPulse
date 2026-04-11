@@ -31,7 +31,7 @@ export const hotspotsApi = {
 
 // Scan
 export const scanApi = {
-  trigger: () => api.post('/scan/trigger').then((res) => res.data),
+  trigger: (keywordIds?: number[]) => api.post('/scan/trigger', { keyword_ids: keywordIds }).then((res) => res.data),
   getStatus: () => api.get<ScanStatus>('/scan/status').then((res) => res.data),
 };
 

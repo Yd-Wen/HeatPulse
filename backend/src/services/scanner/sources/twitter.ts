@@ -49,14 +49,20 @@ async function fetchTwitterTweets(query: string): Promise<SourceResult[]> {
 
     const results: SourceResult[] = [];
 
-    if (response.data?.tweets) {
+    // 根据 twitterapi.io 文档调整字段映射
+    // 响应格式: { tweets: [...], has_next_page, next_cursor }
+    if (response.data?.tweets && Array.isArray(response.data.tweets)) {
       for (const tweet of response.data.tweets) {
+        const author = tweet.author || {};
+        const username = author.userName || 'i';
+        const tweetId = tweet.id;
+
         results.push({
           title: tweet.text ? tweet.text.substring(0, 100) + (tweet.text.length > 100 ? '...' : '') : '无内容',
           summary: tweet.text || '',
-          url: `https://twitter.com/${tweet.author?.userName || 'i'}/status/${tweet.id}`,
+          url: tweet.url || `https://twitter.com/${username}/status/${tweetId}`,
           source: 'twitter',
-          heat: tweet.retweetCount + tweet.likeCount || 0,
+          heat: (tweet.retweetCount || 0) + (tweet.likeCount || 0),
           timestamp: new Date(tweet.createdAt)
         });
       }

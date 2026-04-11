@@ -5,6 +5,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Loading } from '../components/common/Loading';
+import { HotspotCard } from '../components/hotspots/HotspotCard';
 import type { Hotspot } from '../types';
 import { hotspotsApi } from '../api/client';
 
@@ -94,100 +95,5 @@ export function Hotspots() {
         </div>
       )}
     </div>
-  );
-}
-
-function HotspotCard({ hotspot, index }: { hotspot: Hotspot; index: number }) {
-  const relevanceColor =
-    hotspot.relevance_score >= 80
-      ? 'success'
-      : hotspot.relevance_score >= 60
-      ? 'warning'
-      : 'default';
-
-  const isHighImportance = hotspot.importance && hotspot.importance >= 8;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-    >
-      <Card
-        hover
-        glow={isHighImportance ? 'pink' : 'none'}
-        className={isHighImportance ? 'border-[#ff3366]/30' : ''}
-      >
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <h3 className="text-lg font-semibold text-[#f0f0f5] leading-tight line-clamp-2">
-              {hotspot.title}
-            </h3>
-            <a
-              href={hotspot.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-
-          {hotspot.ai_summary && (
-            <p className="text-sm text-[#9ca3af] line-clamp-3">
-              {hotspot.ai_summary}
-            </p>
-          )}
-
-          {hotspot.ai_tags && hotspot.ai_tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {hotspot.ai_tags.map((tag) => (
-                <Badge key={tag} variant="default" size="sm">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="info" size="sm">
-                {hotspot.source_type === 'twitter'
-                  ? 'Twitter'
-                  : hotspot.source_type === 'search'
-                  ? '搜索'
-                  : 'API'}
-              </Badge>
-
-              {hotspot.is_fake ? (
-                <Badge variant="error" size="sm">
-                  <ShieldAlert className="w-3 h-3 mr-1" />
-                  可疑
-                </Badge>
-              ) : (
-                <Badge variant="success" size="sm">
-                  <Shield className="w-3 h-3 mr-1" />
-                  可信
-                </Badge>
-              )}
-
-              <Badge variant={relevanceColor} size="sm">
-                <Sparkles className="w-3 h-3 mr-1" />
-                {Math.round(hotspot.relevance_score)}分
-              </Badge>
-            </div>
-
-            <span className="text-xs text-[#6b7280]">
-              {new Date(hotspot.created_at).toLocaleString('zh-CN', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
-        </div>
-      </Card>
-    </motion.div>
   );
 }

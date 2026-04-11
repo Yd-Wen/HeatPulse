@@ -162,7 +162,7 @@ export const scannerService = {
               title: result.title,
               content: result.summary,
               source_url: result.url,
-              source_type: result.source as 'search' | 'twitter' | 'api',
+              source_type: result.source,
               keyword_id: matchedKeyword?.id || null,
               relevance_score: analysis.authenticity_score,
               is_fake: !analysis.is_real,

@@ -1,5 +1,10 @@
 import { motion } from 'framer-motion';
-import { ExternalLink, Shield, ShieldAlert, Sparkles } from 'lucide-react';
+import {
+  ExternalLink,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+} from 'lucide-react';
 import type { Hotspot } from '../../types';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
@@ -8,6 +13,17 @@ interface HotspotCardProps {
   hotspot: Hotspot;
   index?: number;
 }
+
+// 来源标签映射（只保留 label）
+const sourceLabels: Record<string, string> = {
+  twitter: 'X',
+  bilibili: 'B站',
+  weibo: '微博',
+  baidu: '百度',
+  zhihu: '知乎',
+  search: '搜索',
+  api: 'API',
+};
 
 export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
   const relevanceColor =
@@ -18,6 +34,9 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
       : 'default';
 
   const isHighImportance = hotspot.importance && hotspot.importance >= 8;
+
+  // 获取来源标签
+  const sourceLabel = sourceLabels[hotspot.source_type] || hotspot.source_type;
 
   return (
     <motion.div
@@ -67,13 +86,9 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
           {/* Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
             <div className="flex items-center gap-3">
-              {/* Source Type */}
+              {/* Source Type - 只显示 label */}
               <Badge variant="info" size="sm">
-                {hotspot.source_type === 'twitter'
-                  ? 'Twitter'
-                  : hotspot.source_type === 'search'
-                  ? '搜索'
-                  : 'API'}
+                {sourceLabel}
               </Badge>
 
               {/* Authenticity */}

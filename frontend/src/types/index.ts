@@ -12,7 +12,7 @@ export interface Hotspot {
   title: string;
   content?: string;
   source_url: string;
-  source_type: 'search' | 'twitter' | 'api';
+  source_type: 'twitter' | 'bilibili' | 'weibo' | 'baidu' | 'zhihu' | 'search';
   keyword_id?: number;
   relevance_score: number;
   is_fake: boolean;
