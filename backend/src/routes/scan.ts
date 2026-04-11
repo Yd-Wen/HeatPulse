@@ -6,7 +6,7 @@ const router = Router();
 
 // POST /api/scan/trigger - 手动触发扫描
 router.post('/trigger', async (req, res) => {
-  const { keyword_ids } = req.body || {};
+  const { keyword_ids, sources } = req.body || {};
 
   // 检查是否已有扫描正在进行
   const runningScan = await prisma.scanLog.findFirst({
@@ -22,7 +22,7 @@ router.post('/trigger', async (req, res) => {
   }
 
   // 启动扫描（不等待完成）
-  scannerService.startScan(keyword_ids).catch(console.error);
+  scannerService.startScan(keyword_ids, sources).catch(console.error);
 
   res.json({
     success: true,

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Flame, Filter, ExternalLink, Shield, ShieldAlert, Sparkles } from 'lucide-react';
+import { Flame, Filter } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
 import { Loading } from '../components/common/Loading';
 import { HotspotCard } from '../components/hotspots/HotspotCard';
 import type { Hotspot } from '../types';
@@ -72,7 +70,7 @@ export function Hotspots() {
         ))}
       </div>
 
-      {/* Hotspots Grid */}
+      {/* Hotspots Grid - Masonry Layout */}
       {loading ? (
         <div className="flex justify-center py-12">
           <Loading size="lg" />
@@ -88,9 +86,16 @@ export function Hotspots() {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="masonry-grid">
           {filteredHotspots.map((hotspot, index) => (
-            <HotspotCard key={hotspot.id} hotspot={hotspot} index={index} />
+            <div key={hotspot.id} className="break-inside-avoid mb-4">
+              <HotspotCard
+                hotspot={hotspot}
+                index={index}
+                showDelete
+                onDelete={loadHotspots}
+              />
+            </div>
           ))}
         </div>
       )}

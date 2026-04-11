@@ -6,6 +6,7 @@ import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Badge } from '../components/common/Badge';
 import { Loading } from '../components/common/Loading';
+import { ConfirmModal } from '../components/common/Modal';
 import type { Keyword } from '../types';
 import { keywordsApi } from '../api/client';
 
@@ -15,6 +16,7 @@ export function Keywords() {
   const [submitting, setSubmitting] = useState(false);
   const [newKeyword, setNewKeyword] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; keyword: string } | null>(null);
 
   useEffect(() => {
     loadKeywords();
@@ -60,14 +62,15 @@ export function Keywords() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除这个关键词吗？')) return;
-
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await keywordsApi.delete(id);
-      setKeywords(keywords.filter(k => k.id !== id));
+      await keywordsApi.delete(deleteTarget.id);
+      setKeywords(keywords.filter(k => k.id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (error) {
       console.error('Failed to delete keyword:', error);
+      alert('删除失败，请重试');
     }
   };
 
@@ -157,7 +160,7 @@ export function Keywords() {
                       )}
                     </div>
                     <button
-                      onClick={() => handleDelete(keyword.id)}
+                      onClick={() => setDeleteTarget({ id: keyword.id, keyword: keyword.keyword })}
                       className="p-2 rounded-lg text-[#6b7280] hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -200,6 +203,18 @@ export function Keywords() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="确认删除"
+        message={`确定要删除关键词 "${deleteTarget?.keyword}" 吗？此操作不可恢复。`}
+        confirmText="删除"
+        cancelText="取消"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

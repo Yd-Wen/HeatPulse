@@ -55,7 +55,7 @@ export const scannerService = {
   },
 
   // 开始扫描
-  async startScan(keywordIds?: number[]): Promise<void> {
+  async startScan(keywordIds?: number[], sources?: string[]): Promise<void> {
     if (isScanning) {
       console.log('[Scanner] Scan already in progress');
       return;
@@ -63,6 +63,9 @@ export const scannerService = {
 
     isScanning = true;
     console.log('[Scanner] Starting scan at', new Date().toISOString());
+    if (sources && sources.length > 0) {
+      console.log('[Scanner] Selected sources:', sources);
+    }
 
     // 广播扫描开始
     broadcastScanStatus({
@@ -113,7 +116,7 @@ export const scannerService = {
 
       // 获取所有数据源的数据
       const keywordStrings = keywords.map(k => k.keyword);
-      const sourceResults = await fetchAllSources(keywordStrings);
+      const sourceResults = await fetchAllSources(keywordStrings, sources);
 
       console.log(`[Scanner] Found ${sourceResults.length} items from sources`);
 

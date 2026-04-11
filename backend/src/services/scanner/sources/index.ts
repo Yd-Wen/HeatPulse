@@ -44,46 +44,56 @@ export function getRandomUserAgent(): string {
 }
 
 // 多源获取数据
-export async function fetchAllSources(keywords: string[]): Promise<SourceResult[]> {
+export async function fetchAllSources(keywords: string[], selectedSources?: string[]): Promise<SourceResult[]> {
   const results: SourceResult[] = [];
   const errors: string[] = [];
+
+  // 如果没有指定源，默认使用所有源
+  const sources = selectedSources?.length ? selectedSources : ['bilibili', 'twitter', 'sogou'];
+  const shouldFetchBilibili = sources.includes('bilibili');
+  const shouldFetchTwitter = sources.includes('twitter');
+  const shouldFetchSogou = sources.includes('sogou');
 
   for (const keyword of keywords) {
     const isAccount = isAccountQuery(keyword);
 
     try {
       // 1. B站热门/搜索
-      try {
-        const parsed = isAccount ? parseAccountQuery(keyword) : null;
-        const platform = parsed?.platform;
+      if (shouldFetchBilibili) {
+        try {
+          const parsed = isAccount ? parseAccountQuery(keyword) : null;
+          const platform = parsed?.platform;
 
-        // 只有明确指定 bilibili 平台或不是账号查询时才调用 B站
-        if (!isAccount || platform === 'bilibili' || !platform) {
-          const bilibiliResults = await fetchBilibiliHot(keyword);
-          results.push(...bilibiliResults);
+          // 只有明确指定 bilibili 平台或不是账号查询时才调用 B站
+          if (!isAccount || platform === 'bilibili' || !platform) {
+            const bilibiliResults = await fetchBilibiliHot(keyword);
+            results.push(...bilibiliResults);
+          }
+          await randomDelay(1000, 2000); // B站限制较严格
+        } catch (e) {
+          errors.push(`Bilibili: ${(e as Error).message}`);
         }
-        await randomDelay(1000, 2000); // B站限制较严格
-      } catch (e) {
-        errors.push(`Bilibili: ${(e as Error).message}`);
       }
 
       // 2. Twitter/X 搜索
-      try {
-        const parsed = isAccount ? parseAccountQuery(keyword) : null;
-        const platform = parsed?.platform;
+      if (shouldFetchTwitter) {
+        try {
+          const parsed = isAccount ? parseAccountQuery(keyword) : null;
+          const platform = parsed?.platform;
 
-        // 只有明确指定 twitter 平台或不是账号查询时才调用 Twitter
-        if (!isAccount || platform === 'twitter' || !platform) {
-          const twitterResults = await fetchTwitterSearch(isAccount ? parsed!.username : keyword);
-          results.push(...twitterResults);
+          // 只有明确指定 twitter 平台或不是账号查询时才调用 Twitter
+          if (!isAccount || platform === 'twitter' || !platform) {
+            const twitterResults = await fetchTwitterSearch(isAccount ? parsed!.username : keyword);
+            results.push(...twitterResults);
+          }
+          await randomDelay(10000, 15000); // Twitter API 限制较严格
+        } catch (e) {
+          errors.push(`Twitter: ${(e as Error).message}`);
         }
-        await randomDelay(10000, 15000); // Twitter API 限制较严格
-      } catch (e) {
-        errors.push(`Twitter: ${(e as Error).message}`);
       }
 
       // 3. 搜狗搜索（仅非账号查询）
-      if (!isAccount) {
+      if (shouldFetchSogou && !isAccount) {
         try {
           const sogouResults = await searchSogou(keyword, 10);
           results.push(...sogouResults);

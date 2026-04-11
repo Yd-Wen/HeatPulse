@@ -8,11 +8,11 @@ import {
   TrendingUp,
   RefreshCw,
   Play,
-  Plus,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import { Modal } from '../components/common/Modal';
 import { HotspotList } from '../components/hotspots/HotspotList';
 import { RealtimeIndicator } from '../components/hotspots/RealtimeIndicator';
 import type { Stats, Hotspot, ScanStatus } from '../types';
@@ -29,7 +29,46 @@ export function Dashboard() {
   const [quickKeyword, setQuickKeyword] = useState('');
   const [adding, setAdding] = useState(false);
   const [addSuccess, setAddSuccess] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
   const navigate = useNavigate();
+
+  // 信息源选择状态
+  type SourceType = 'sogou' | 'bilibili' | 'twitter';
+  const sourceOptions: { value: SourceType; label: string }[] = [
+    { value: 'sogou', label: '搜狗' },
+    { value: 'bilibili', label: 'B站' },
+    { value: 'twitter', label: 'X' },
+  ];
+  const DEFAULT_SOURCES: SourceType[] = ['sogou', 'bilibili', 'twitter'];
+  const SOURCES_STORAGE_KEY = 'heatpulse:selected_sources';
+
+  // 从 localStorage 读取信息源偏好
+  const loadSourcesFromStorage = (): SourceType[] => {
+    try {
+      const stored = localStorage.getItem(SOURCES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.every((s: string) => DEFAULT_SOURCES.includes(s))) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load sources from storage:', e);
+    }
+    return DEFAULT_SOURCES;
+  };
+
+  // 写入 localStorage
+  const saveSourcesToStorage = (sources: SourceType[]) => {
+    try {
+      localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(sources));
+    } catch (e) {
+      console.error('Failed to save sources to storage:', e);
+    }
+  };
+
+  const [selectedSources, setSelectedSources] = useState<SourceType[]>(loadSourcesFromStorage);
 
   const { connected, lastMessage } = useWebSocket();
 
@@ -70,12 +109,26 @@ export function Dashboard() {
     e.preventDefault();
     if (!quickKeyword.trim()) return;
 
+    // 检查是否正在进行扫描（使用 scanStatus 判断，因为 adding 只在用户点击时为 true）
+    if (scanStatus?.is_scanning || adding) {
+      setAlertMessage('存在进行中的扫描任务');
+      setShowAlert(true);
+      return;
+    }
+
+    // 检查是否选择了信息源
+    if (selectedSources.length === 0) {
+      setAlertMessage('没有选择信息源，请选择信息源后再进行扫描。');
+      setShowAlert(true);
+      return;
+    }
+
     try {
       setAdding(true);
       // 先创建临时关键词
       const keyword = await keywordsApi.create(quickKeyword.trim());
-      // 只扫描这个关键词
-      await scanApi.trigger([keyword.id]);
+      // 使用缓存的信息源
+      await scanApi.trigger([keyword.id], selectedSources);
       setQuickKeyword('');
       setAddSuccess(true);
       // 刷新统计数据
@@ -91,9 +144,23 @@ export function Dashboard() {
   };
 
   const handleScanAll = async () => {
+    // 检查是否正在进行扫描（使用 scanStatus 判断，因为 triggering 只在用户点击时为 true）
+    if (scanStatus?.is_scanning) {
+      setAlertMessage('存在进行中的扫描任务');
+      setShowAlert(true);
+      return;
+    }
+
+    // 检查是否选择了信息源
+    if (selectedSources.length === 0) {
+      setAlertMessage('没有选择信息源，请选择信息源后再进行扫描。');
+      setShowAlert(true);
+      return;
+    }
+
     try {
       setTriggering(true);
-      await scanApi.trigger();
+      await scanApi.trigger(undefined, selectedSources);
       const status = await scanApi.getStatus();
       setScanStatus(status);
     } catch (error) {
@@ -142,6 +209,7 @@ export function Dashboard() {
           <Button
             onClick={handleScanAll}
             loading={triggering}
+            disabled={selectedSources.length === 0}
             variant="secondary"
           >
             <Play className="w-4 h-4" />
@@ -156,6 +224,57 @@ export function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Source Selection */}
+      <Card className="bg-gradient-to-r from-[#1a1a25] to-[#0f0f15] border border-[#2a2a3a]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <span className="text-[#9ca3af] text-sm whitespace-nowrap">信息源选择：</span>
+          <div className="flex flex-wrap gap-6">
+            {sourceOptions.map((option) => {
+              const isSelected = selectedSources.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className={`flex items-center gap-2 cursor-pointer ${triggering ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <span className="text-sm text-[#9ca3af]">{option.label}</span>
+                  <div className="relative inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={isSelected}
+                      onChange={() => {
+                        const newValues = isSelected
+                          ? selectedSources.filter((v) => v !== option.value)
+                          : [...selectedSources, option.value];
+                        setSelectedSources(newValues);
+                        saveSourcesToStorage(newValues);
+                      }}
+                      disabled={triggering}
+                    />
+                    <div
+                      className={`
+                        w-11 h-6 rounded-full transition-all duration-200
+                        ${isSelected
+                          ? 'bg-gradient-to-r from-[#ff3366] to-[#9933ff]'
+                          : 'bg-[#2a2a3a]'
+                        }
+                      `}
+                    >
+                      <div
+                        className={`
+                          absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-200
+                          ${isSelected ? 'translate-x-5' : 'translate-x-0'}
+                        `}
+                      />
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
 
       {/* Quick Scan */}
       <Card className="bg-gradient-to-r from-[#1a1a25] to-[#0f0f15] border border-[#2a2a3a]">
@@ -257,6 +376,20 @@ export function Dashboard() {
         </div>
         <HotspotList hotspots={hotspots} loading={loading} />
       </div>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={showAlert}
+        onClose={() => setShowAlert(false)}
+        title="提示"
+        footer={
+          <Button variant="secondary" onClick={() => setShowAlert(false)}>
+            确定
+          </Button>
+        }
+      >
+        <p className="text-[#9ca3af]">{alertMessage}</p>
+      </Modal>
     </div>
   );
 }

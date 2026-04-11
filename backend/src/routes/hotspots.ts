@@ -133,4 +133,20 @@ router.post('/:id/read', async (req, res) => {
   res.json({ success: true, message: 'Marked as read' });
 });
 
+// DELETE /api/hotspots/:id - 删除热点
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const hotspot = await prisma.hotspot.findUnique({
+    where: { id: parseInt(id) }
+  });
+
+  if (!hotspot) {
+    return res.status(404).json({ error: 'Hotspot not found' });
+  }
+
+  await prisma.hotspot.delete({ where: { id: parseInt(id) } });
+  res.json({ success: true, message: 'Hotspot deleted' });
+});
+
 export default router;

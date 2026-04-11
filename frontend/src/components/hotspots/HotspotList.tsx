@@ -34,9 +34,11 @@ export function HotspotList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="masonry-grid">
       {hotspots.map((hotspot, index) => (
-        <HotspotCard key={hotspot.id} hotspot={hotspot} index={index} />
+        <div key={hotspot.id} className="break-inside-avoid mb-4">
+          <HotspotCard hotspot={hotspot} index={index} />
+        </div>
       ))}
     </div>
   );

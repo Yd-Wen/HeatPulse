@@ -1,18 +1,24 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ExternalLink,
   Shield,
   ShieldAlert,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import type { Hotspot } from '../../types';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
+import { ConfirmModal } from '../common/Modal';
+import { hotspotsApi } from '../../api/client';
 import { formatRelativeTime } from '../../utils/date';
 
 interface HotspotCardProps {
   hotspot: Hotspot;
   index?: number;
+  onDelete?: () => void;
+  showDelete?: boolean;
 }
 
 // 来源标签映射（只保留 label）
@@ -27,7 +33,10 @@ const sourceLabels: Record<string, string> = {
   api: 'API',
 };
 
-export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
+export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }: HotspotCardProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const relevanceColor =
     hotspot.relevance_score >= 80
       ? 'success'
@@ -39,6 +48,20 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
 
   // 获取来源标签
   const sourceLabel = sourceLabels[hotspot.source_type] || hotspot.source_type;
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await hotspotsApi.delete(hotspot.id);
+      setShowConfirm(false);
+      onDelete?.();
+    } catch (error) {
+      console.error('Failed to delete hotspot:', error);
+      alert('删除失败，请重试');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -57,14 +80,26 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
             <h3 className="text-lg font-semibold text-[#f0f0f5] leading-tight line-clamp-2">
               {hotspot.title}
             </h3>
-            <a
-              href={hotspot.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {showDelete && (
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={deleting}
+                  className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="删除"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <a
+                href={hotspot.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
           </div>
 
           {/* AI Summary */}
@@ -120,6 +155,18 @@ export function HotspotCard({ hotspot, index = 0 }: HotspotCardProps) {
           </div>
         </div>
       </Card>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleDelete}
+        title="确认删除"
+        message={`确定要删除热点 "${hotspot.title.slice(0, 50)}${hotspot.title.length > 50 ? '...' : ''}" 吗？此操作不可恢复。`}
+        confirmText="删除"
+        cancelText="取消"
+        confirmVariant="danger"
+      />
     </motion.div>
   );
 }
