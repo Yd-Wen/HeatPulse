@@ -21,7 +21,8 @@ export const keywordsApi = {
 // Hotspots
 export const hotspotsApi = {
   getAll: (params?: { limit?: number; offset?: number; keyword_id?: number }) =>
-    api.get<Hotspot[]>('/hotspots', { params }).then((res) => res.data),
+    api.get<{ data: Hotspot[]; pagination: any }>('/hotspots', { params })
+      .then((res) => res.data.data),
   getById: (id: number) =>
     api.get<Hotspot>(`/hotspots/${id}`).then((res) => res.data),
   markAsRead: (id: number) =>
