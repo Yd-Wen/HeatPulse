@@ -49,8 +49,8 @@ export function Dashboard() {
       const stored = localStorage.getItem(SOURCES_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.every((s: string) => DEFAULT_SOURCES.includes(s))) {
-          return parsed;
+        if (Array.isArray(parsed) && parsed.every((s: unknown) => (DEFAULT_SOURCES as string[]).includes(s as string))) {
+          return parsed as SourceType[];
         }
       }
     } catch (e) {
