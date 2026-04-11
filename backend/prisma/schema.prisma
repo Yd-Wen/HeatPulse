@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Keyword {
+  id           Int       @id @default(autoincrement())
+  keyword      String
+  category     String?
+  is_active    Boolean   @default(true)
+  notify_email String?
+  created_at   DateTime  @default(now())
+  hotspots     Hotspot[]
+}
+
+model Hotspot {
+  id              Int            @id @default(autoincrement())
+  title           String
+  content         String?
+  source_url      String
+  source_type     String         // search, twitter, api
+  keyword_id      Int?
+  keyword         Keyword?       @relation(fields: [keyword_id], references: [id])
+  relevance_score Float          @default(0)
+  is_fake         Boolean        @default(false)
+  ai_summary      String?
+  ai_tags         String?        // JSON 数组
+  importance      Int?
+  published_at    DateTime?
+  created_at      DateTime       @default(now())
+  notifications   Notification[]
+
+  @@index([keyword_id])
+  @@index([created_at])
+  @@index([is_fake])
+}
+
+model Notification {
+  id         Int       @id @default(autoincrement())
+  hotspot_id Int
+  hotspot    Hotspot   @relation(fields: [hotspot_id], references: [id])
+  type       String    // websocket, email
+  status     String    // pending, sent, failed
+  sent_at    DateTime?
+  error      String?
+  created_at DateTime  @default(now())
+
+  @@index([hotspot_id])
+  @@index([status])
+}
+
+model ScanLog {
+  id         Int       @id @default(autoincrement())
+  started_at DateTime  @default(now())
+  ended_at   DateTime?
+  status     String    // running, completed, failed
+  keywords_count Int?
+  hotspots_found Int?
+  error      String?
+
+  @@index([started_at])
+}

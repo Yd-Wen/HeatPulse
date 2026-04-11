@@ -1,0 +1,41 @@
+{
+  "name": "heatpulse-backend",
+  "version": "1.0.0",
+  "description": "HeatPulse AI 热点追踪系统后端",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "keywords": ["heatpulse", "ai", "hotspot", "tracking"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "axios": "^1.7.0",
+    "cheerio": "1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^5.0.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.0",
+    "openai": "^4.77.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
+    "@types/ws": "^8.5.13",
+    "nodemon": "^3.1.0",
+    "prisma": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.7.0"
+  }
+}
