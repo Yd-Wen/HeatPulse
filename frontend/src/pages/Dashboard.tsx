@@ -100,7 +100,7 @@ export function Dashboard() {
       setLoading(true);
       const [statsData, hotspotsData, statusData] = await Promise.all([
         statsApi.get(),
-        hotspotsApi.getAll({ limit: 6 }),
+        hotspotsApi.getAll({ limit: 6 }).then(res => res.data),
         scanApi.getStatus(),
       ]);
       setStats(statsData);

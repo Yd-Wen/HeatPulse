@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Flame, ArrowUp, ArrowDown, Search, Calendar, Trash2, Check } from 'lucide-react';
+import { Flame, ArrowUp, ArrowDown, Search, Calendar, Trash2 } from 'lucide-react';
 import Masonry from 'react-masonry-css';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Loading } from '../components/common/Loading';
 import { Modal } from '../components/common/Modal';
 import { HotspotCard } from '../components/hotspots/HotspotCard';
-import type { Hotspot, HotspotsQueryParams, SortField } from '../types';
-import { hotspotsApi } from '../api/client';
-
-type SortField = 'created_at' | 'importance' | 'relevance_score';
+import type { Hotspot, HotspotsQueryParams, SortField, Keyword } from '../types';
+import { hotspotsApi, keywordsApi } from '../api/client';
 
 const sortOptions: { field: SortField; label: string }[] = [
   { field: 'created_at', label: '发布时间' },
   { field: 'importance', label: '热度' },
   { field: 'relevance_score', label: '相关性' },
+];
+
+// 关键词筛选选项（动态生成）
+const getKeywordOptions = (keywords: Keyword[]) => [
+  { value: undefined, label: '全部关键词' },
+  ...keywords.map(k => ({ value: k.id, label: k.keyword })),
 ];
 
 const sourceOptions = [
@@ -49,7 +53,11 @@ const timeRangeOptions = [
 
 export function Hotspots() {
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 关键词筛选状态
+  const [selectedKeywordId, setSelectedKeywordId] = useState<number | undefined>(undefined);
 
   // 单字段排序配置
   const [activeSortField, setActiveSortField] = useState<SortField>('created_at');
@@ -61,6 +69,11 @@ export function Hotspots() {
   // 时间范围筛选：today/7days/all
   const [timeRange, setTimeRange] = useState<'today' | '7days' | 'all'>('all');
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
   // 批量删除状态
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -71,9 +84,14 @@ export function Hotspots() {
   const isAllSelected = hotspots.length > 0 && selectedIds.size === hotspots.length;
   const selectedCount = selectedIds.size;
 
+  // 加载关键词列表
+  useEffect(() => {
+    keywordsApi.getAll().then(setKeywords).catch(console.error);
+  }, []);
+
   useEffect(() => {
     loadHotspots();
-  }, [activeSortField, sortOrder, sourceType, relevanceLevel, heatLevel, timeRange]);
+  }, [activeSortField, sortOrder, sourceType, relevanceLevel, heatLevel, timeRange, selectedKeywordId, currentPage]);
 
   // 根据 timeRange 计算时间范围
   const getTimeRangeParams = (): { start_date?: string; end_date?: string } => {
@@ -117,7 +135,8 @@ export function Hotspots() {
     try {
       setLoading(true);
       const params: HotspotsQueryParams = {
-        limit: 50,
+        page: currentPage,
+        limit: 9,
         sort_by: activeSortField,
         sort_order: sortOrder,
       };
@@ -127,13 +146,20 @@ export function Hotspots() {
       if (heatLevel) params.heat_level = heatLevel as any;
       if (searchQuery) params.search = searchQuery;
 
+      // 添加关键词筛选参数
+      if (selectedKeywordId !== undefined) {
+        params.keyword_id = selectedKeywordId;
+      }
+
       // 添加时间范围参数
       const timeParams = getTimeRangeParams();
       if (timeParams.start_date) params.start_date = timeParams.start_date;
       if (timeParams.end_date) params.end_date = timeParams.end_date;
 
-      const data = await hotspotsApi.getAll(params);
-      setHotspots(data);
+      const result = await hotspotsApi.getAll(params);
+      setHotspots(result.data);
+      setTotalPages(result.pagination.total_pages);
+      setTotal(result.pagination.total);
     } catch (error) {
       console.error('Failed to load hotspots:', error);
     } finally {
@@ -148,11 +174,13 @@ export function Hotspots() {
   const handleClearFilters = () => {
     setActiveSortField('created_at');
     setSortOrder('desc');
+    setSelectedKeywordId(undefined);
     setSourceType('');
     setRelevanceLevel('');
     setHeatLevel('');
     setSearchQuery('');
     setTimeRange('all');
+    setCurrentPage(1);
   };
 
   // 切换批量删除模式
@@ -237,11 +265,10 @@ export function Hotspots() {
               <button
                 key={opt.field}
                 onClick={() => handleSortToggle(opt.field)}
-                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-[#ff3366]/20 border-[#ff3366] text-[#f0f0f5]'
-                    : 'bg-[#1a1a25] border-[#2a2a3a] text-[#6b7280] hover:text-[#f0f0f5] hover:border-[#ff3366]/50'
-                } border`}
+                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                  ? 'bg-[#ff3366]/20 border-[#ff3366] text-[#f0f0f5]'
+                  : 'bg-[#1a1a25] border-[#2a2a3a] text-[#6b7280] hover:text-[#f0f0f5] hover:border-[#ff3366]/50'
+                  } border`}
                 title={`${opt.label}${isActive ? (sortOrder === 'asc' ? ' (升序)' : ' (降序)') : ''}`}
               >
                 {opt.label}
@@ -259,8 +286,24 @@ export function Hotspots() {
         {/* Row 2: Advanced Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <select
+            value={selectedKeywordId ?? ''}
+            onChange={(e) => {
+              setSelectedKeywordId(e.target.value ? Number(e.target.value) : undefined);
+              setCurrentPage(1);
+            }}
+            className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
+          >
+            {getKeywordOptions(keywords).map(opt => (
+              <option key={opt.value ?? ''} value={opt.value ?? ''}>{opt.label}</option>
+            ))}
+          </select>
+
+          <select
             value={sourceType}
-            onChange={(e) => setSourceType(e.target.value)}
+            onChange={(e) => {
+              setSourceType(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
           >
             {sourceOptions.map(opt => (
@@ -270,7 +313,10 @@ export function Hotspots() {
 
           <select
             value={relevanceLevel}
-            onChange={(e) => setRelevanceLevel(e.target.value)}
+            onChange={(e) => {
+              setRelevanceLevel(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
           >
             {relevanceOptions.map(opt => (
@@ -280,7 +326,10 @@ export function Hotspots() {
 
           <select
             value={heatLevel}
-            onChange={(e) => setHeatLevel(e.target.value)}
+            onChange={(e) => {
+              setHeatLevel(e.target.value);
+              setCurrentPage(1);
+            }}
             className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
           >
             {heatOptions.map(opt => (
@@ -292,7 +341,10 @@ export function Hotspots() {
             <Calendar className="w-4 h-4 text-[#6b7280]" />
             <select
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as 'today' | '7days' | 'all')}
+              onChange={(e) => {
+                setTimeRange(e.target.value as 'today' | '7days' | 'all');
+                setCurrentPage(1);
+              }}
               className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
             >
               {timeRangeOptions.map(opt => (
@@ -403,6 +455,31 @@ export function Hotspots() {
             </div>
           ))}
         </Masonry>
+      )}
+
+      {/* 分页组件 */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 rounded-lg bg-[#1a1a25] border border-[#2a2a3a] text-sm text-[#f0f0f5] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#ff3366]/50 transition-colors"
+          >
+            上一页
+          </button>
+
+          <span className="text-sm text-[#f0f0f5]">
+            {currentPage} / {totalPages}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 rounded-lg bg-[#1a1a25] border border-[#2a2a3a] text-sm text-[#f0f0f5] disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#ff3366]/50 transition-colors"
+          >
+            下一页
+          </button>
+        </div>
       )}
 
       {/* 批量删除确认弹窗 */}

@@ -30,6 +30,7 @@ export interface Hotspot {
 export type SortField = 'created_at' | 'importance' | 'relevance_score';
 
 export interface HotspotsQueryParams {
+  page?: number;
   limit?: number;
   offset?: number;
   keyword_id?: number;
@@ -45,6 +46,13 @@ export interface HotspotsQueryParams {
   sort_order?: 'asc' | 'desc';
   relevance_level?: 'core' | 'relevant' | 'partial';
   heat_level?: 'viral' | 'hot' | 'growing' | 'cold';
+}
+
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
 }
 
 export interface Notification {

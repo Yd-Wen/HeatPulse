@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Keyword, Hotspot, Stats, ScanStatus, HotspotsQueryParams } from '../types';
+import type { Keyword, Hotspot, Stats, ScanStatus, HotspotsQueryParams, PaginationInfo } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -21,8 +21,8 @@ export const keywordsApi = {
 // Hotspots
 export const hotspotsApi = {
   getAll: (params?: HotspotsQueryParams) =>
-    api.get<{ data: Hotspot[]; pagination: any }>('/hotspots', { params })
-      .then((res) => res.data.data),
+    api.get<{ data: Hotspot[]; pagination: PaginationInfo }>('/hotspots', { params })
+      .then((res) => res.data),
   getById: (id: number) =>
     api.get<Hotspot>(`/hotspots/${id}`).then((res) => res.data),
   markAsRead: (id: number) =>
