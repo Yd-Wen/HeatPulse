@@ -54,4 +54,4 @@ coverage/
 # OS files
 Thumbs.db
 
-.claude/
+.claude/settings.local.json
