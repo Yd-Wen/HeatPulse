@@ -68,11 +68,11 @@ export async function analyzeContent(
         // 验证返回格式
         return {
           is_real: Boolean(result.is_real),
-          authenticity_score: Math.max(0, Math.min(100, Math.round(result.authenticity_score || 50))),
-          fake_reason: result.fake_reason || null,
+          relevance_score: Math.max(0, Math.min(100, Math.round(result.relevance_score || 50))),
+          heat_score: Math.max(0, Math.min(100, Math.round(result.heat_score || 50))),
           summary: result.summary || '暂无摘要',
           tags: Array.isArray(result.tags) ? result.tags : [],
-          importance: Math.max(1, Math.min(10, Math.round(result.importance || 5)))
+          language: result.language === 'zh' || result.language === 'en' ? result.language : 'zh'
         };
       } catch (parseError) {
         console.error('[AI] Failed to parse response:', response);
@@ -96,11 +96,11 @@ export async function analyzeContent(
   console.error('[AI] All retries failed, returning default result');
   return {
     is_real: true,
-    authenticity_score: 50,
-    fake_reason: null,
+    relevance_score: 50,
+    heat_score: 50,
     summary: 'AI 分析失败，请手动验证',
     tags: [],
-    importance: 5
+    language: 'zh'
   };
 }
 

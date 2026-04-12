@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react';
-import { Flame, ArrowUp, ArrowDown, Search, Calendar } from 'lucide-react';
+import { Flame, ArrowUp, ArrowDown, Search, Calendar, Trash2, Check } from 'lucide-react';
 import Masonry from 'react-masonry-css';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Loading } from '../components/common/Loading';
+import { Modal } from '../components/common/Modal';
 import { HotspotCard } from '../components/hotspots/HotspotCard';
 import type { Hotspot, HotspotsQueryParams, SortField } from '../types';
 import { hotspotsApi } from '../api/client';
 
-type SortField = 'created_at' | 'importance' | 'relevance_score' | 'source_type';
+type SortField = 'created_at' | 'importance' | 'relevance_score';
 
 const sortOptions: { field: SortField; label: string }[] = [
   { field: 'created_at', label: '发布时间' },
-  { field: 'importance', label: '重要性' },
-  { field: 'relevance_score', label: '相关性分数' },
-  { field: 'source_type', label: '信息来源' },
+  { field: 'importance', label: '热度' },
+  { field: 'relevance_score', label: '相关性' },
 ];
 
 const sourceOptions = [
@@ -24,12 +24,21 @@ const sourceOptions = [
   { value: 'twitter', label: 'X' },
 ] as const;
 
-const importanceOptions = [
-  { value: '', label: '全部重要性' },
-  { value: 'urgent', label: '紧急 (9-10)' },
-  { value: 'high', label: '高 (7-8)' },
-  { value: 'medium', label: '中 (4-6)' },
-  { value: 'low', label: '低 (1-3)' },
+// 相关性筛选选项
+const relevanceOptions = [
+  { value: '', label: '全部相关性' },
+  { value: 'core', label: '直击核心' },
+  { value: 'relevant', label: '高度贴合' },
+  { value: 'partial', label: '轻度关联' },
+] as const;
+
+// 热度筛选选项
+const heatOptions = [
+  { value: '', label: '全部热度' },
+  { value: 'viral', label: '刷屏级' },
+  { value: 'hot', label: '热议中' },
+  { value: 'growing', label: '持续发酵' },
+  { value: 'cold', label: '无人问津' },
 ] as const;
 
 const timeRangeOptions = [
@@ -46,14 +55,25 @@ export function Hotspots() {
   const [activeSortField, setActiveSortField] = useState<SortField>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sourceType, setSourceType] = useState<string>('');
-  const [importanceLevel, setImportanceLevel] = useState<string>('');
+  const [relevanceLevel, setRelevanceLevel] = useState<string>('');
+  const [heatLevel, setHeatLevel] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   // 时间范围筛选：today/7days/all
   const [timeRange, setTimeRange] = useState<'today' | '7days' | 'all'>('all');
 
+  // 批量删除状态
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [showBatchConfirm, setShowBatchConfirm] = useState(false);
+  const [isBatchMode, setIsBatchMode] = useState(false);  // 批量删除模式开关
+
+  // 派生状态
+  const isAllSelected = hotspots.length > 0 && selectedIds.size === hotspots.length;
+  const selectedCount = selectedIds.size;
+
   useEffect(() => {
     loadHotspots();
-  }, [activeSortField, sortOrder, sourceType, importanceLevel, timeRange]);
+  }, [activeSortField, sortOrder, sourceType, relevanceLevel, heatLevel, timeRange]);
 
   // 根据 timeRange 计算时间范围
   const getTimeRangeParams = (): { start_date?: string; end_date?: string } => {
@@ -103,7 +123,8 @@ export function Hotspots() {
       };
 
       if (sourceType) params.source_type = sourceType;
-      if (importanceLevel) params.importance_level = importanceLevel as any;
+      if (relevanceLevel) params.relevance_level = relevanceLevel as any;
+      if (heatLevel) params.heat_level = heatLevel as any;
       if (searchQuery) params.search = searchQuery;
 
       // 添加时间范围参数
@@ -128,9 +149,57 @@ export function Hotspots() {
     setActiveSortField('created_at');
     setSortOrder('desc');
     setSourceType('');
-    setImportanceLevel('');
+    setRelevanceLevel('');
+    setHeatLevel('');
     setSearchQuery('');
     setTimeRange('all');
+  };
+
+  // 切换批量删除模式
+  const toggleBatchMode = () => {
+    if (isBatchMode) {
+      // 退出批量模式时清除选中
+      setIsBatchMode(false);
+      setSelectedIds(new Set());
+    } else {
+      // 进入批量模式
+      setIsBatchMode(true);
+    }
+  };
+
+  // 切换单张卡片选中
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(hotspots.map(h => h.id)));
+    }
+  };
+
+  // 批量删除
+  const handleBatchDelete = async () => {
+    try {
+      setBatchDeleting(true);
+      await Promise.all([...selectedIds].map(id => hotspotsApi.delete(id)));
+      setSelectedIds(new Set());
+      setShowBatchConfirm(false);
+      loadHotspots();
+    } catch (error) {
+      console.error('批量删除失败:', error);
+      alert('删除失败，请重试');
+    } finally {
+      setBatchDeleting(false);
+    }
   };
 
   return (
@@ -143,10 +212,18 @@ export function Hotspots() {
             查看所有 AI 识别发现的热点内容
           </p>
         </div>
-        <Button onClick={loadHotspots} variant="secondary">
-          <Flame className="w-4 h-4" />
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={loadHotspots} variant="secondary">
+            <Flame className="w-4 h-4" />
+            刷新
+          </Button>
+          <Button
+            onClick={toggleBatchMode}
+            variant={isBatchMode ? 'secondary' : 'danger'}
+          >
+            {isBatchMode ? '取消' : '批量删除'}
+          </Button>
+        </div>
       </div>
 
       {/* Sort and Filter Controls */}
@@ -192,11 +269,21 @@ export function Hotspots() {
           </select>
 
           <select
-            value={importanceLevel}
-            onChange={(e) => setImportanceLevel(e.target.value)}
+            value={relevanceLevel}
+            onChange={(e) => setRelevanceLevel(e.target.value)}
             className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
           >
-            {importanceOptions.map(opt => (
+            {relevanceOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={heatLevel}
+            onChange={(e) => setHeatLevel(e.target.value)}
+            className="bg-[#1a1a25] border border-[#2a2a3a] rounded-lg px-3 py-2 text-sm text-[#f0f0f5] focus:outline-none focus:border-[#ff3366]"
+          >
+            {heatOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
@@ -239,6 +326,40 @@ export function Hotspots() {
             清除筛选
           </button>
         </div>
+
+        {/* 批量操作栏（仅批量模式显示） */}
+        {isBatchMode && (
+          <div className="flex items-center gap-4 bg-[#1a1a25] rounded-xl px-4 py-3 border border-[#2a2a3a]"
+          >
+            {/* 全选复选框 */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 accent-[#ff3366]"
+              />
+              <span className="text-sm text-[#9ca3af]">全选</span>
+            </label>
+
+            <div className="w-px h-6 bg-[#2a2a3a]" />
+
+            <span className="text-sm text-[#f0f0f5]">已选择 {selectedCount} 项</span>
+
+            <div className="flex-1" />
+
+            <Button
+              variant="danger"
+              size="sm"
+              loading={batchDeleting}
+              disabled={selectedCount === 0}
+              onClick={() => setShowBatchConfirm(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+              删除选中
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Hotspots Grid - Masonry Layout */}
@@ -275,11 +396,35 @@ export function Hotspots() {
                 index={index}
                 showDelete
                 onDelete={loadHotspots}
+                selectable={isBatchMode}
+                selected={selectedIds.has(hotspot.id)}
+                onSelect={toggleSelect}
               />
             </div>
           ))}
         </Masonry>
       )}
+
+      {/* 批量删除确认弹窗 */}
+      <Modal
+        isOpen={showBatchConfirm}
+        onClose={() => setShowBatchConfirm(false)}
+        title="确认批量删除"
+        footer={
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => setShowBatchConfirm(false)}>
+              取消
+            </Button>
+            <Button variant="danger" loading={batchDeleting} onClick={handleBatchDelete}>
+              确认删除
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[#9ca3af]">
+          确定要删除选中的 {selectedCount} 条热点吗？此操作不可恢复。
+        </p>
+      </Modal>
     </div>
   );
 }

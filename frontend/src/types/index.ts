@@ -14,18 +14,20 @@ export interface Hotspot {
   source_url: string;
   source_type: 'twitter' | 'bilibili' | 'weibo' | 'baidu' | 'zhihu' | 'sogou' | 'search';
   keyword_id?: number;
-  relevance_score: number;
+  relevance_score: number;           // 相关性分数 (0-100)
   is_fake: boolean;
   ai_summary?: string;
   ai_tags?: string[];
-  importance?: number;
-  importance_level?: 'urgent' | 'high' | 'medium' | 'low';
+  importance?: number;               // 热度值 (0-100)
+  language?: 'zh' | 'en';            // 原文语言
+  relevance_level?: 'core' | 'relevant' | 'partial';  // 相关性分级
+  heat_level?: 'viral' | 'hot' | 'growing' | 'cold';  // 热度分级
   published_at?: string;
   created_at: string;
   keyword?: Keyword;
 }
 
-export type SortField = 'created_at' | 'importance' | 'relevance_score' | 'source_type';
+export type SortField = 'created_at' | 'importance' | 'relevance_score';
 
 export interface HotspotsQueryParams {
   limit?: number;
@@ -41,7 +43,8 @@ export interface HotspotsQueryParams {
   /** 单字段排序（向后兼容） */
   sort_by?: SortField;
   sort_order?: 'asc' | 'desc';
-  importance_level?: 'urgent' | 'high' | 'medium' | 'low';
+  relevance_level?: 'core' | 'relevant' | 'partial';
+  heat_level?: 'viral' | 'hot' | 'growing' | 'cold';
 }
 
 export interface Notification {
@@ -59,6 +62,8 @@ export interface Stats {
   total_hotspots: number;
   today_hotspots: number;
   real_time_hotspots: number;
+  system_notifications: number;  // 系统通知数
+  email_notifications: number;   // 邮件通知数
 }
 
 export interface ScanStatus {

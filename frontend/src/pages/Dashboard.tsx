@@ -8,6 +8,7 @@ import {
   TrendingUp,
   RefreshCw,
   Play,
+  Mail,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -186,11 +187,18 @@ export function Dashboard() {
       color: 'from-[#ff6b35] to-[#9933ff]',
     },
     {
-      title: '实时推送',
-      value: stats?.real_time_hotspots ?? 0,
-      subtext: '已通知',
+      title: '系统通知',
+      value: stats?.system_notifications ?? 0,
+      subtext: '已推送',
       icon: Activity,
       color: 'from-[#9933ff] to-[#00d4ff]',
+    },
+    {
+      title: '邮件通知',
+      value: stats?.email_notifications ?? 0,
+      subtext: '已发送',
+      icon: Mail,
+      color: 'from-[#00d4ff] to-[#00ff88]',
     },
   ];
 
@@ -309,8 +317,8 @@ export function Dashboard() {
         </form>
       </Card>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Stats Grid - 改为4列 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card, index) => (
           <motion.div
             key={card.title}

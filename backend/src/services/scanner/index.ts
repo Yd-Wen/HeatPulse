@@ -4,6 +4,24 @@ import { analyzeContent } from '../ai/openrouter';
 import { broadcastHotspot, broadcastScanStatus } from '../websocket';
 import type { SourceResult, ScanStatus } from '../../types';
 
+// 辅助函数：根据 relevance_score 获取相关性分级
+function getRelevanceLevel(score: number | null | undefined): 'core' | 'relevant' | 'partial' {
+  if (!score) return 'partial';
+  if (score >= 80) return 'core';        // 直击核心
+  if (score >= 60) return 'relevant';    // 高度贴合
+  if (score >= 40) return 'partial';     // 轻度关联
+  return 'partial';
+}
+
+// 辅助函数：根据 importance 获取热度分级
+function getHeatLevel(score: number | null | undefined): 'viral' | 'hot' | 'growing' | 'cold' {
+  if (!score) return 'growing';
+  if (score >= 90) return 'viral';       // 刷屏级
+  if (score >= 70) return 'hot';         // 热议中
+  if (score >= 40) return 'growing';     // 持续发酵
+  return 'cold';                          // 无人问津
+}
+
 // 扫描服务状态
 let isScanning = false;
 let lastScanTime: Date | null = null;
@@ -147,9 +165,9 @@ export const scannerService = {
             result.source
           );
 
-          // 只保存真实度超过 60 分的热点
-          if (analysis.authenticity_score < 60) {
-            console.log(`[Scanner] Skipping low authenticity: ${result.title}`);
+          // 改为 relevance_score >= 40 才保存
+          if (analysis.relevance_score < 40) {
+            console.log(`[Scanner] Skipping low relevance: ${result.title}`);
             continue;
           }
 
@@ -167,11 +185,14 @@ export const scannerService = {
               source_url: result.url,
               source_type: result.source,
               keyword_id: matchedKeyword?.id || null,
-              relevance_score: analysis.authenticity_score,
+              relevance_score: analysis.relevance_score,
               is_fake: !analysis.is_real,
               ai_summary: analysis.summary,
               ai_tags: JSON.stringify(analysis.tags),
-              importance: analysis.importance,
+              importance: analysis.heat_score,  // 热度值
+              language: analysis.language,
+              notification_sent: false,
+              email_sent: false,
               published_at: result.timestamp
             },
             include: {
@@ -179,7 +200,8 @@ export const scannerService = {
                 select: {
                   id: true,
                   keyword: true,
-                  category: true
+                  category: true,
+                  notify_email: true
                 }
               } : false
             }
@@ -188,17 +210,23 @@ export const scannerService = {
           hotspotsFound++;
           console.log(`[Scanner] Created hotspot: ${hotspot.title}`);
 
-          // 广播新热点
+          // 广播新热点（包含分级字段）
           broadcastHotspot({
             ...hotspot,
-            ai_tags: analysis.tags
+            ai_tags: analysis.tags,
+            relevance_level: getRelevanceLevel(hotspot.relevance_score),
+            heat_level: getHeatLevel(hotspot.importance)
           });
 
-          // 确定通知邮箱：优先使用关键词的 notify_email，否则使用全局 NOTIFY_EMAIL
-          const notifyEmail = matchedKeyword?.notify_email || process.env.NOTIFY_EMAIL;
+          // 标记系统通知已推送
+          await prisma.hotspot.update({
+            where: { id: hotspot.id },
+            data: { notification_sent: true }
+          });
 
-          // 只推送 importance >= 8 的热点
-          if (notifyEmail && analysis.importance >= 8) {
+          // 改为 heat_score >= 70 才发送邮件
+          const notifyEmail = matchedKeyword?.notify_email || process.env.NOTIFY_EMAIL;
+          if (notifyEmail && analysis.heat_score >= 70) {
             try {
               const { sendHotspotEmail } = await import('../email');
               // 转换 ai_tags 为数组格式
@@ -207,7 +235,12 @@ export const scannerService = {
                 ai_tags: hotspot.ai_tags ? JSON.parse(hotspot.ai_tags) : undefined
               };
               await sendHotspotEmail(notifyEmail, hotspotForEmail);
-              console.log(`[Scanner] Email sent to ${notifyEmail}`);
+              // 发送成功后标记 email_sent
+              await prisma.hotspot.update({
+                where: { id: hotspot.id },
+                data: { email_sent: true }
+              });
+              console.log(`[Scanner] Email sent for hotspot #${hotspot.id}`);
             } catch (emailError) {
               console.error('[Scanner] Failed to send email:', (emailError as Error).message);
             }

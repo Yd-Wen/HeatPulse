@@ -25,11 +25,14 @@ model Hotspot {
   source_type     String         // search, twitter, api
   keyword_id      Int?
   keyword         Keyword?       @relation(fields: [keyword_id], references: [id])
-  relevance_score Float          @default(0)
+  relevance_score Float          @default(0)    // 相关性分数 (0-100)
   is_fake         Boolean        @default(false)
   ai_summary      String?
   ai_tags         String?        // JSON 数组
-  importance      Int?
+  importance      Int?           // 热度值 (0-100)
+  language        String?        // 原文语言 (zh/en)
+  notification_sent Boolean      @default(false)  // 系统通知已推送
+  email_sent        Boolean      @default(false)   // 邮件已发送
   published_at    DateTime?
   created_at      DateTime       @default(now())
   notifications   Notification[]

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ExternalLink,
-  Sparkles,
   Trash2,
+  Check,
 } from 'lucide-react';
 import type { Hotspot } from '../../types';
 import { Card } from '../common/Card';
@@ -17,6 +17,10 @@ interface HotspotCardProps {
   index?: number;
   onDelete?: () => void;
   showDelete?: boolean;
+  // 批量选择相关
+  selectable?: boolean;
+  selected?: boolean;
+  onSelect?: (id: number) => void;
 }
 
 // 来源标签映射（只保留 label）
@@ -31,33 +35,45 @@ const sourceLabels: Record<string, string> = {
   api: 'API',
 };
 
-// 重要性分类标签映射
-const importanceLabels: Record<string, { label: string; variant: 'error' | 'warning' | 'info' | 'default' }> = {
-  urgent: { label: '紧急', variant: 'error' },
-  high: { label: '高', variant: 'warning' },
-  medium: { label: '中', variant: 'info' },
-  low: { label: '低', variant: 'default' },
+// 相关性标签配置（无前缀后缀）
+const relevanceLabels: Record<string, { label: string; variant: 'error' | 'warning' | 'info' | 'default' }> = {
+  core: { label: '直击核心', variant: 'error' },       // >= 80
+  relevant: { label: '高度贴合', variant: 'warning' },  // 60-79
+  partial: { label: '轻度关联', variant: 'info' },     // 40-59
 };
 
-export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }: HotspotCardProps) {
+// 热度标签配置（无前缀后缀）
+const heatLabels: Record<string, { label: string; variant: 'error' | 'warning' | 'info' | 'default' }> = {
+  viral: { label: '刷屏级', variant: 'error' },       // >= 90
+  hot: { label: '热议中', variant: 'warning' },        // 70-89
+  growing: { label: '持续发酵', variant: 'info' },     // 40-69
+  cold: { label: '无人问津', variant: 'default' },    // < 40
+};
+
+// 语言标识配置
+const languageLabels: Record<string, string> = {
+  zh: '中文',
+  en: '英文',
+};
+
+export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false, selectable = false, selected = false, onSelect }: HotspotCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const relevanceColor =
-    hotspot.relevance_score >= 80
-      ? 'success'
-      : hotspot.relevance_score >= 60
-      ? 'warning'
-      : 'default';
-
-  const isHighImportance = hotspot.importance && hotspot.importance >= 8;
+  // 高热度卡片发光效果（热度值 >= 70）
+  const isHighHeat = hotspot.importance && hotspot.importance >= 70;
 
   // 获取来源标签
   const sourceLabel = sourceLabels[hotspot.source_type] || hotspot.source_type;
 
-  // 获取重要性分类标签
-  const importanceInfo = hotspot.importance_level
-    ? importanceLabels[hotspot.importance_level]
+  // 获取相关性标签
+  const relevanceInfo = hotspot.relevance_level
+    ? relevanceLabels[hotspot.relevance_level]
+    : null;
+
+  // 获取热度标签
+  const heatInfo = hotspot.heat_level
+    ? heatLabels[hotspot.heat_level]
     : null;
 
   const handleDelete = async () => {
@@ -82,8 +98,8 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }
     >
       <Card
         hover
-        glow={isHighImportance ? 'pink' : 'none'}
-        className={isHighImportance ? 'border-[#ff3366]/30' : ''}
+        glow={isHighHeat ? 'pink' : 'none'}
+        className={`${isHighHeat ? 'border-[#ff3366]/30' : ''} ${selected ? 'border-[#ff3366]' : ''}`}
       >
         <div className="space-y-4">
           {/* Header */}
@@ -92,24 +108,43 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }
               {hotspot.title}
             </h3>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {showDelete && (
+              {/* 批量模式下只显示勾选框 */}
+              {selectable ? (
                 <button
-                  onClick={() => setShowConfirm(true)}
-                  disabled={deleting}
-                  className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="删除"
+                  onClick={(e) => { e.stopPropagation(); onSelect?.(hotspot.id); }}
+                  className={`
+                    p-2 rounded-lg transition-colors
+                    ${selected
+                      ? 'bg-gradient-to-r from-[#ff3366] to-[#9933ff] text-white'
+                      : 'bg-[#1a1a25] text-[#9ca3af] hover:text-[#ff3366] border border-[#2a2a3a] hover:border-[#ff3366]/50'
+                    }
+                  `}
+                  title={selected ? '取消选择' : '选择'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Check className="w-4 h-4" />
                 </button>
+              ) : (
+                <>
+                  {showDelete && (
+                    <button
+                      onClick={() => setShowConfirm(true)}
+                      disabled={deleting}
+                      className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      title="删除"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <a
+                    href={hotspot.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </>
               )}
-              <a
-                href={hotspot.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-[#1a1a25] text-[#9ca3af] hover:text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
             </div>
           </div>
 
@@ -134,28 +169,36 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }
           {/* Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Source Type - 只显示 label */}
+              {/* 来源类型 */}
               <Badge variant="info" size="sm">
                 {sourceLabel}
               </Badge>
 
-              {/* Relevance Score */}
-              <Badge variant={relevanceColor} size="sm">
-                <Sparkles className="w-3 h-3 mr-1" />
-                {Math.round(hotspot.relevance_score)}分
-              </Badge>
-
-              {/* Importance Level */}
-              {importanceInfo && (
-                <Badge variant={importanceInfo.variant} size="sm">
-                  重要性: {importanceInfo.label}
+              {/* 相关性标签 - 只显示标签，无分数 */}
+              {relevanceInfo && (
+                <Badge variant={relevanceInfo.variant} size="sm">
+                  {relevanceInfo.label}
                 </Badge>
               )}
 
-              {/* Keyword Badge - 移动到 footer 同一行 */}
+              {/* 热度标签 - 只显示标签，无分数 */}
+              {heatInfo && (
+                <Badge variant={heatInfo.variant} size="sm">
+                  {heatInfo.label}
+                </Badge>
+              )}
+
+              {/* 语言标识 */}
+              {hotspot.language && (
+                <Badge variant="default" size="sm">
+                  {languageLabels[hotspot.language] || hotspot.language}
+                </Badge>
+              )}
+
+              {/* 关键词 */}
               {hotspot.keyword && (
                 <Badge variant="default" size="sm">
-                  关键词: {hotspot.keyword.keyword}
+                  {hotspot.keyword.keyword}
                 </Badge>
               )}
             </div>

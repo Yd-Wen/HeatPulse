@@ -20,9 +20,15 @@ export interface Hotspot {
   is_fake: boolean;
   ai_summary?: string | null;
   ai_tags?: string | string[] | null;
-  importance?: number | null;
+  importance?: number | null;  // 热度值 (0-100)
+  language?: string | null;    // 原文语言 (zh/en)
+  notification_sent: boolean;  // 系统通知已推送
+  email_sent: boolean;         // 邮件已发送
   published_at?: Date | null;
   created_at: Date;
+  // 计算字段（前端展示用）
+  relevance_level?: 'core' | 'relevant' | 'partial';  // 相关性分级
+  heat_level?: 'viral' | 'hot' | 'growing' | 'cold';  // 热度分级
 }
 
 // 通知
@@ -65,11 +71,11 @@ export interface SourceResult {
 // AI 分析结果
 export interface AIAnalysisResult {
   is_real: boolean;
-  authenticity_score: number;
-  fake_reason: string | null;
+  relevance_score: number;  // 相关性 (0-100)
+  heat_score: number;       // 热度值 (0-100)
   summary: string;
   tags: string[];
-  importance: number;
+  language: 'zh' | 'en';
 }
 
 // WebSocket 消息
@@ -86,6 +92,8 @@ export interface Stats {
   total_hotspots: number;
   today_hotspots: number;
   real_time_hotspots: number;
+  system_notifications: number;  // 系统通知数
+  email_notifications: number;   // 邮件通知数
 }
 
 // 扫描状态

@@ -13,7 +13,9 @@ router.get('/', async (req, res) => {
     active_keywords,
     total_hotspots,
     today_hotspots,
-    real_time_hotspots
+    real_time_hotspots,
+    system_notifications,
+    email_notifications
   ] = await Promise.all([
     prisma.keyword.count(),
     prisma.keyword.count({ where: { is_active: true } }),
@@ -29,6 +31,20 @@ router.get('/', async (req, res) => {
         created_at: {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // 24小时内
         }
+      }
+    }),
+    // 系统通知：notification_sent = true 的热点数
+    prisma.hotspot.count({
+      where: {
+        notification_sent: true,
+        created_at: { gte: today }
+      }
+    }),
+    // 邮件通知：email_sent = true 的热点数
+    prisma.hotspot.count({
+      where: {
+        email_sent: true,
+        created_at: { gte: today }
       }
     })
   ]);
@@ -74,6 +90,8 @@ router.get('/', async (req, res) => {
     total_hotspots,
     today_hotspots,
     real_time_hotspots,
+    system_notifications,
+    email_notifications,
     hotspots_by_source: hotspotsBySource.reduce((acc, item) => {
       acc[item.source_type] = item._count.id;
       return acc;
