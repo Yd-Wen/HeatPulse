@@ -1,4 +1,5 @@
 import type { SourceResult } from '../../../types';
+import pLimit from 'p-limit';
 import { fetchBilibiliHot } from './bilibili';
 import { fetchTwitterSearch } from './twitter';
 import { searchSogou } from './sogou';
@@ -43,67 +44,61 @@ export function getRandomUserAgent(): string {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
-// 多源获取数据
-export async function fetchAllSources(keywords: string[], selectedSources?: string[]): Promise<SourceResult[]> {
-  const results: SourceResult[] = [];
-  const errors: string[] = [];
+// 限制并发数为 5
+const limit = pLimit(5);
 
-  // 如果没有指定源，默认使用所有源
-  const sources = selectedSources?.length ? selectedSources : ['bilibili', 'twitter', 'sogou'];
-  const shouldFetchBilibili = sources.includes('bilibili');
-  const shouldFetchTwitter = sources.includes('twitter');
-  const shouldFetchSogou = sources.includes('sogou');
+// 任务生成函数：为每个(关键词, 数据源)组合创建任务
+function createTasks(keywords: string[], sources: string[]) {
+  const tasks: Array<() => Promise<SourceResult[]>> = [];
 
   for (const keyword of keywords) {
     const isAccount = isAccountQuery(keyword);
+    const parsed = isAccount ? parseAccountQuery(keyword) : null;
 
-    try {
-      // 1. B站热门/搜索
-      if (shouldFetchBilibili) {
-        try {
-          const parsed = isAccount ? parseAccountQuery(keyword) : null;
-          const platform = parsed?.platform;
-
-          // 只有明确指定 bilibili 平台或不是账号查询时才调用 B站
-          if (!isAccount || platform === 'bilibili' || !platform) {
-            const bilibiliResults = await fetchBilibiliHot(keyword);
-            results.push(...bilibiliResults);
-          }
-          await randomDelay(1000, 2000); // B站限制较严格
-        } catch (e) {
-          errors.push(`Bilibili: ${(e as Error).message}`);
-        }
+    // Bilibili 任务
+    if (sources.includes('bilibili')) {
+      if (!isAccount || parsed?.platform === 'bilibili' || !parsed?.platform) {
+        tasks.push(() => limit(() => fetchBilibiliHot(keyword).finally(() => randomDelay(1000, 2000))));
       }
+    }
 
-      // 2. Twitter/X 搜索
-      if (shouldFetchTwitter) {
-        try {
-          const parsed = isAccount ? parseAccountQuery(keyword) : null;
-          const platform = parsed?.platform;
-
-          // 只有明确指定 twitter 平台或不是账号查询时才调用 Twitter
-          if (!isAccount || platform === 'twitter' || !platform) {
-            const twitterResults = await fetchTwitterSearch(isAccount ? parsed!.username : keyword);
-            results.push(...twitterResults);
-          }
-          await randomDelay(10000, 15000); // Twitter API 限制较严格
-        } catch (e) {
-          errors.push(`Twitter: ${(e as Error).message}`);
-        }
+    // Twitter 任务
+    if (sources.includes('twitter')) {
+      if (!isAccount || parsed?.platform === 'twitter' || !parsed?.platform) {
+        const twKeyword = isAccount ? parsed!.username : keyword;
+        tasks.push(() => limit(() => fetchTwitterSearch(twKeyword).finally(() => randomDelay(10000, 15000))));
       }
+    }
 
-      // 3. 搜狗搜索（仅非账号查询）
-      if (shouldFetchSogou && !isAccount) {
-        try {
-          const sogouResults = await searchSogou(keyword, 10);
-          results.push(...sogouResults);
-          await randomDelay(3000, 5000);
-        } catch (e) {
-          errors.push(`Sogou: ${(e as Error).message}`);
-        }
-      }
-    } catch (error) {
-      errors.push(`Keyword "${keyword}": ${(error as Error).message}`);
+    // Sogou 任务（非账号查询）
+    if (sources.includes('sogou') && !isAccount) {
+      tasks.push(() => limit(() => searchSogou(keyword, 10).finally(() => randomDelay(3000, 5000))));
+    }
+  }
+
+  return tasks;
+}
+
+// 多源获取数据（并行执行）
+export async function fetchAllSources(keywords: string[], selectedSources?: string[]): Promise<SourceResult[]> {
+  const sources = selectedSources?.length ? selectedSources : ['bilibili', 'twitter', 'sogou'];
+
+  // 创建所有任务
+  const tasks = createTasks(keywords, sources);
+  console.log(`[Sources] Created ${tasks.length} tasks with concurrency limit of 5`);
+
+  // 并行执行所有任务（受限于 5 个并发）
+  const taskResults = await Promise.allSettled(tasks.map(task => task()));
+
+  // 收集结果
+  const results: SourceResult[] = [];
+  const errors: string[] = [];
+
+  for (const result of taskResults) {
+    if (result.status === 'fulfilled' && result.value) {
+      results.push(...result.value);
+    } else if (result.status === 'rejected') {
+      errors.push((result.reason as Error).message);
     }
   }
 
@@ -111,7 +106,7 @@ export async function fetchAllSources(keywords: string[], selectedSources?: stri
   const uniqueResults = deduplicateResults(results);
 
   if (errors.length > 0) {
-    console.log('[Sources] Some sources failed:', errors);
+    console.log(`[Sources] ${errors.length} tasks failed:`, errors.slice(0, 5).join('; '));
   }
 
   return uniqueResults;
