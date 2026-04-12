@@ -81,7 +81,14 @@ export function Dashboard() {
   // Handle WebSocket messages
   useEffect(() => {
     if (lastMessage?.type === 'NEW_HOTSPOT' && lastMessage.data) {
-      setHotspots((prev) => [lastMessage.data as Hotspot, ...prev.slice(0, 5)]);
+      const newHotspot = lastMessage.data as Hotspot;
+      // 防止重复添加：检查是否已存在相同 ID 的热点
+      setHotspots((prev) => {
+        if (prev.some(h => h.id === newHotspot.id)) {
+          return prev;
+        }
+        return [newHotspot, ...prev.slice(0, 5)];
+      });
     }
     if (lastMessage?.type === 'SCAN_COMPLETE') {
       loadData();
