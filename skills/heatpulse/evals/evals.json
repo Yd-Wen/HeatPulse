@@ -1,0 +1,35 @@
+{
+  "skill_name": "heatpulse",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看看 AI 领域最近有什么热点？",
+      "expected_output": "返回 AI 领域的热点列表，包含标题、来源、相关性评分、热度评分、AI 摘要",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "查一下最新的 DeepSeek 新闻和动态",
+      "expected_output": "返回 DeepSeek 相关的热点列表，按热度降序排列",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "有什么 AI 编程的热门话题？",
+      "expected_output": "返回 AI 编程相关的热点，包含标签、相关性评分",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "监控 Claude 4 的最新消息",
+      "expected_output": "返回 Claude 4 相关的最新消息列表",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "搜索一下最新的大模型技术动态",
+      "expected_output": "返回大模型相关的技术动态热点列表",
+      "files": []
+    }
+  ]
+}
