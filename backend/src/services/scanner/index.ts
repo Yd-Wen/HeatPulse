@@ -197,7 +197,8 @@ export const scannerService = {
           // 确定通知邮箱：优先使用关键词的 notify_email，否则使用全局 NOTIFY_EMAIL
           const notifyEmail = matchedKeyword?.notify_email || process.env.NOTIFY_EMAIL;
 
-          if (notifyEmail) {
+          // 只推送 importance >= 8 的热点
+          if (notifyEmail && analysis.importance >= 8) {
             try {
               const { sendHotspotEmail } = await import('../email');
               // 转换 ai_tags 为数组格式

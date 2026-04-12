@@ -3,7 +3,16 @@ import { prisma } from '../utils/prisma';
 
 const router = Router();
 
-// GET /api/hotspots - 获取热点列表（支持分页、筛选）
+// 辅助函数：根据importance数值获取分类级别
+function getImportanceLevel(importance: number | null | undefined): string {
+  if (!importance) return 'low';
+  if (importance >= 9) return 'urgent';
+  if (importance >= 7) return 'high';
+  if (importance >= 4) return 'medium';
+  return 'low';
+}
+
+// GET /api/hotspots - 获取热点列表（支持分页、筛选、排序）
 router.get('/', async (req, res) => {
   const {
     page = '1',
@@ -13,7 +22,10 @@ router.get('/', async (req, res) => {
     is_fake,
     search,
     start_date,
-    end_date
+    end_date,
+    sort_by = 'created_at',
+    sort_order = 'desc',
+    importance_level
   } = req.query;
 
   const pageNum = parseInt(page as string);
@@ -36,20 +48,66 @@ router.get('/', async (req, res) => {
 
   if (search) {
     where.OR = [
-      { title: { contains: search as string, mode: 'insensitive' } },
-      { content: { contains: search as string, mode: 'insensitive' } },
-      { ai_summary: { contains: search as string, mode: 'insensitive' } }
+      { title: { contains: search as string } },
+      { content: { contains: search as string } },
+      { ai_summary: { contains: search as string } }
     ];
   }
 
+  // 时间筛选改用 published_at
   if (start_date || end_date) {
-    where.created_at = {};
+    where.published_at = {};
     if (start_date) {
-      where.created_at.gte = new Date(start_date as string);
+      where.published_at.gte = new Date(start_date as string);
     }
     if (end_date) {
-      where.created_at.lte = new Date(end_date as string);
+      where.published_at.lte = new Date(end_date as string);
     }
+  }
+
+  // 重要性分类筛选
+  if (importance_level) {
+    const level = importance_level as string;
+    if (level === 'urgent') {
+      where.importance = { gte: 9, lte: 10 };
+    } else if (level === 'high') {
+      where.importance = { gte: 7, lte: 8 };
+    } else if (level === 'medium') {
+      where.importance = { gte: 4, lte: 6 };
+    } else if (level === 'low') {
+      where.importance = { gte: 1, lte: 3 };
+    }
+  }
+
+  // 构建多字段排序条件
+  // 支持两种格式：
+  // 1. 旧格式：sort_by=created_at&sort_order=desc（单字段，向后兼容）
+  // 2. 新格式：sort=created_at:desc,importance:desc,relevance_score:desc,source_type:asc（多字段）
+  const { sort } = req.query;
+  let orderBy: any[] = [];
+  const validSortFields = ['created_at', 'importance', 'relevance_score', 'source_type'];
+
+  if (sort) {
+    // 新格式：多字段排序
+    const sortParts = (sort as string).split(',');
+    for (const part of sortParts) {
+      const [field, dir] = part.split(':');
+      if (validSortFields.includes(field)) {
+        // 排序字段为 created_at 时，实际使用 published_at
+        const dbField = field === 'created_at' ? 'published_at' : field;
+        orderBy.push({ [dbField]: dir === 'asc' ? 'asc' : 'desc' });
+      }
+    }
+  }
+
+  // 如果没有有效的排序参数，使用默认单字段排序（向后兼容）
+  if (orderBy.length === 0) {
+    let sortField = validSortFields.includes(sort_by as string) ? sort_by : 'created_at';
+    if (sortField === 'created_at') {
+      sortField = 'published_at';
+    }
+    const sortDir = sort_order === 'asc' ? 'asc' : 'desc';
+    orderBy.push({ [sortField as string]: sortDir });
   }
 
   const [hotspots, total] = await Promise.all([
@@ -57,7 +115,7 @@ router.get('/', async (req, res) => {
       where,
       skip,
       take: limitNum,
-      orderBy: { created_at: 'desc' },
+      orderBy,
       include: {
         keyword: {
           select: {
@@ -71,10 +129,11 @@ router.get('/', async (req, res) => {
     prisma.hotspot.count({ where })
   ]);
 
-  // Parse ai_tags JSON
+  // Parse ai_tags JSON and add importance_level
   const hotspotsWithParsedTags = hotspots.map(h => ({
     ...h,
-    ai_tags: h.ai_tags ? JSON.parse(h.ai_tags) : undefined
+    ai_tags: h.ai_tags ? JSON.parse(h.ai_tags) : undefined,
+    importance_level: getImportanceLevel(h.importance)
   }));
 
   res.json({

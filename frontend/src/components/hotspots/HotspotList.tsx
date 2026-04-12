@@ -2,6 +2,7 @@ import type { Hotspot } from '../../types';
 import { HotspotCard } from './HotspotCard';
 import { Loading } from '../common/Loading';
 import { Activity } from 'lucide-react';
+import Masonry from 'react-masonry-css';
 
 interface HotspotListProps {
   hotspots: Hotspot[];
@@ -34,12 +35,22 @@ export function HotspotList({
   }
 
   return (
-    <div className="masonry-grid">
+    <Masonry
+      breakpointCols={{
+        default: 3,
+        1280: 3,
+        1024: 2,
+        768: 2,
+        640: 1
+      }}
+      className="masonry-grid"
+      columnClassName="masonry-grid-column"
+    >
       {hotspots.map((hotspot, index) => (
-        <div key={hotspot.id} className="break-inside-avoid mb-4">
+        <div key={hotspot.id} className="mb-4">
           <HotspotCard hotspot={hotspot} index={index} />
         </div>
       ))}
-    </div>
+    </Masonry>
   );
 }

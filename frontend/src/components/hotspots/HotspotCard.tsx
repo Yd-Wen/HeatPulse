@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ExternalLink,
-  Shield,
-  ShieldAlert,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -33,6 +31,14 @@ const sourceLabels: Record<string, string> = {
   api: 'API',
 };
 
+// 重要性分类标签映射
+const importanceLabels: Record<string, { label: string; variant: 'error' | 'warning' | 'info' | 'default' }> = {
+  urgent: { label: '紧急', variant: 'error' },
+  high: { label: '高', variant: 'warning' },
+  medium: { label: '中', variant: 'info' },
+  low: { label: '低', variant: 'default' },
+};
+
 export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }: HotspotCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -48,6 +54,11 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }
 
   // 获取来源标签
   const sourceLabel = sourceLabels[hotspot.source_type] || hotspot.source_type;
+
+  // 获取重要性分类标签
+  const importanceInfo = hotspot.importance_level
+    ? importanceLabels[hotspot.importance_level]
+    : null;
 
   const handleDelete = async () => {
     try {
@@ -122,30 +133,31 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false }
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Source Type - 只显示 label */}
               <Badge variant="info" size="sm">
                 {sourceLabel}
               </Badge>
-
-              {/* Authenticity */}
-              {hotspot.is_fake ? (
-                <Badge variant="error" size="sm">
-                  <ShieldAlert className="w-3 h-3 mr-1" />
-                  可疑
-                </Badge>
-              ) : (
-                <Badge variant="success" size="sm">
-                  <Shield className="w-3 h-3 mr-1" />
-                  可信
-                </Badge>
-              )}
 
               {/* Relevance Score */}
               <Badge variant={relevanceColor} size="sm">
                 <Sparkles className="w-3 h-3 mr-1" />
                 {Math.round(hotspot.relevance_score)}分
               </Badge>
+
+              {/* Importance Level */}
+              {importanceInfo && (
+                <Badge variant={importanceInfo.variant} size="sm">
+                  重要性: {importanceInfo.label}
+                </Badge>
+              )}
+
+              {/* Keyword Badge - 移动到 footer 同一行 */}
+              {hotspot.keyword && (
+                <Badge variant="default" size="sm">
+                  关键词: {hotspot.keyword.keyword}
+                </Badge>
+              )}
             </div>
 
             {/* Date */}
