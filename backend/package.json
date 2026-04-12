@@ -11,7 +11,12 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
   },
-  "keywords": ["heatpulse", "ai", "hotspot", "tracking"],
+  "keywords": [
+    "heatpulse",
+    "ai",
+    "hotspot",
+    "tracking"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -24,6 +29,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.0",
     "openai": "^4.77.0",
+    "p-limit": "^3.1.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
