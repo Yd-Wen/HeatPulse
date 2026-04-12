@@ -167,7 +167,7 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false, 
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-[#2a2a3a]">
+          <div className="flex items-end justify-between pt-3 border-t border-[#2a2a3a]">
             <div className="flex items-center gap-2 flex-wrap">
               {/* 来源类型 */}
               <Badge variant="info" size="sm">
@@ -204,7 +204,7 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false, 
             </div>
 
             {/* Date */}
-            <span className="text-xs text-[#6b7280]">
+            <span className="text-xs text-[#6b7280] whitespace-nowrap">
               {formatRelativeTime(hotspot.published_at || hotspot.created_at)}
             </span>
           </div>
