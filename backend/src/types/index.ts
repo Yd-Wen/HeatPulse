@@ -78,6 +78,12 @@ export interface AIAnalysisResult {
   language: 'zh' | 'en';
 }
 
+// 查询变体（Query Expansion）
+export interface QueryVariants {
+  variants: string[];
+  reasoning: string;
+}
+
 // WebSocket 消息
 export interface WSMessage {
   type: 'NEW_HOTSPOT' | 'SCAN_START' | 'SCAN_COMPLETE' | 'PING' | 'PONG';

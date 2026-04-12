@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../utils/prisma';
+import { generateQueryVariants } from '../services/ai/queryExpansion';
 
 const router = Router();
 
@@ -57,11 +58,26 @@ router.get('/', async (req, res) => {
   }
 
   if (search) {
-    where.OR = [
-      { title: { contains: search as string } },
-      { content: { contains: search as string } },
-      { ai_summary: { contains: search as string } }
-    ];
+    // 如果有搜索关键词，先生成变体
+    let searchVariants = [search as string];
+    const searchStr = search as string;
+
+    if (searchStr.length >= 2) {
+      try {
+        const variants = await generateQueryVariants(searchStr);
+        searchVariants = variants.variants;
+      } catch (e) {
+        // 如果失败，回退到原始关键词
+        console.error('[Hotspots] Query expansion failed:', (e as Error).message);
+      }
+    }
+
+    // 使用变体进行 OR 查询
+    where.OR = searchVariants.map(variant => [
+      { title: { contains: variant } },
+      { content: { contains: variant } },
+      { ai_summary: { contains: variant } }
+    ]).flat();
   }
 
   // 时间筛选改用 published_at

@@ -1,6 +1,7 @@
 import { prisma } from '../../utils/prisma';
 import { fetchAllSources } from './sources';
 import { analyzeContent } from '../ai/openrouter';
+import { generateQueryVariants } from '../ai/queryExpansion';
 import { broadcastHotspot, broadcastScanStatus } from '../websocket';
 import type { SourceResult, ScanStatus } from '../../types';
 
@@ -132,13 +133,39 @@ export const scannerService = {
         data: { keywords_count: keywords.length }
       });
 
-      // 获取所有数据源的数据
-      const keywordStrings = keywords.map(k => k.keyword);
-      const sourceResults = await fetchAllSources(keywordStrings, sources);
+      // ========== Query Expansion: 对每个关键词生成查询变体 ==========
+      console.log('[Scanner] Generating query variants...');
+      const keywordsWithVariants = await Promise.all(
+        keywords.map(async (keyword) => {
+          try {
+            const variants = await generateQueryVariants(keyword.keyword);
+            return {
+              ...keyword,
+              variants: variants.variants
+            };
+          } catch (error) {
+            console.error(`[Scanner] Failed to generate variants for "${keyword.keyword}":`, (error as Error).message);
+            return {
+              ...keyword,
+              variants: [keyword.keyword]
+            };
+          }
+        })
+      );
+
+      // 提取所有变体用于搜索
+      const allVariants = keywordsWithVariants.flatMap(k => k.variants);
+      console.log('[Scanner] Total variants to search:', allVariants.length);
+
+      // 使用所有变体并行获取数据
+      const sourceResults = await fetchAllSources(allVariants, sources);
 
       console.log(`[Scanner] Found ${sourceResults.length} items from sources`);
 
       let hotspotsFound = 0;
+
+      // 用于跟踪已处理的 URL，防止同一热点被多次广播
+      const processedUrls = new Set<string>();
 
       // AI 分析并保存热点
       for (const result of sourceResults) {
@@ -153,10 +180,12 @@ export const scannerService = {
             }
           });
 
-          if (existing) {
-            console.log(`[Scanner] Hotspot already exists: ${result.title}`);
+          // 检查是否已在本次扫描中处理过（防止不同变体搜到相同内容导致重复）
+          if (existing || processedUrls.has(result.url)) {
+            console.log(`[Scanner] Hotspot already processed: ${result.title}`);
             continue;
           }
+          processedUrls.add(result.url);
 
           // AI 分析
           const analysis = await analyzeContent(
@@ -171,8 +200,9 @@ export const scannerService = {
             continue;
           }
 
-          // 找到匹配的关键词
-          const matchedKeyword = keywords.find(k =>
+          // 找到匹配的关键词（使用原始关键词匹配，不是变体）
+          // 变体仅用于搜索数据源，但热点关联的是原始关键词
+          const matchedKeyword = keywordsWithVariants.find(k =>
             result.title.toLowerCase().includes(k.keyword.toLowerCase()) ||
             result.summary.toLowerCase().includes(k.keyword.toLowerCase())
           );

@@ -63,3 +63,20 @@ export const TREND_ANALYSIS_PROMPT = `请分析以下关键词相关的趋势：
   "duration_prediction": string,
   "recommendation": string
 }`;
+
+// Query Expansion Prompt - 生成搜索变体
+export const QUERY_EXPANSION_PROMPT = `请为以下关键词生成搜索变体列表，用于多数据源并行搜索：
+
+关键词：{{keyword}}
+
+请生成 5-8 个相关的搜索变体，包括：
+- 原始关键词
+- 英文缩写/全称
+- 中文翻译/描述
+- 相关术语
+
+请以 JSON 数组格式返回，不要包含其他任何文字：
+{
+  "variants": string[],
+  "reasoning": string
+}`;
