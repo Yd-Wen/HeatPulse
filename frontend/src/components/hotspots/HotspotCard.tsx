@@ -95,12 +95,21 @@ export function HotspotCard({ hotspot, index = 0, onDelete, showDelete = false, 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
+      className="spotlight-card"
     >
       <Card
         hover
         glow={isHighHeat ? 'pink' : 'none'}
-        className={`${isHighHeat ? 'border-[#ff3366]/30' : ''} ${selected ? 'border-[#ff3366]' : ''}`}
+        className={`
+          relative overflow-hidden
+          ${isHighHeat ? 'border-[#ff3366]/30 heat-pulse' : ''}
+          ${selected ? 'border-[#ff3366]' : ''}
+        `}
       >
+        {/* 高热度卡片的渐变装饰 */}
+        {isHighHeat && (
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#ff3366]/10 to-transparent rounded-bl-full pointer-events-none" />
+        )}
         <div className="space-y-4">
           {/* Header */}
           <div className="flex items-start justify-between gap-4">

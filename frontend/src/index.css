@@ -36,6 +36,26 @@ html, body, #root {
 body {
   background: #0a0a0f;
   overflow-x: hidden;
+  /* 动态网格点阵背景 */
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(153, 51, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 0% 0%, rgba(255, 51, 102, 0.02) 0%, transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(0, 212, 255, 0.02) 0%, transparent 30%);
+  background-size: 100% 100%;
+  position: relative;
+}
+
+/* 网格点阵效果 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 #root {
@@ -175,4 +195,83 @@ body {
 .masonry-grid-column {
   padding-left: 1rem;
   background-clip: padding-box;
+}
+
+/* Spotlight 卡片效果 - 模拟 Aceternity UI */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.03),
+    transparent
+  );
+  transition: left 0.5s ease;
+  pointer-events: none;
+}
+
+.spotlight-card:hover::before {
+  left: 100%;
+}
+
+/* 脉冲边框动画 */
+@keyframes gradient-rotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-border-animated {
+  background: linear-gradient(90deg, #ff3366, #9933ff, #00d4ff, #ff3366);
+  background-size: 300% 100%;
+  animation: gradient-rotate 3s linear infinite;
+}
+
+.gradient-border-animated::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #12121a;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+/* 高热度脉冲效果 */
+@keyframes heat-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 51, 102, 0.2), 0 0 40px rgba(255, 51, 102, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 51, 102, 0.4), 0 0 60px rgba(255, 51, 102, 0.2);
+  }
+}
+
+.heat-pulse {
+  animation: heat-pulse 2s ease-in-out infinite;
+}
+
+/* 渐变边框文字 */
+.gradient-text-animated {
+  background: linear-gradient(90deg, #ff3366, #9933ff, #00d4ff, #ff3366);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-rotate 3s linear infinite;
 }

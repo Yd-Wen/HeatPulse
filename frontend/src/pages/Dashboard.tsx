@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Activity,
   Zap,
   Flame,
   TrendingUp,
   RefreshCw,
   Play,
   Mail,
+  Bell,
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -184,28 +184,36 @@ export function Dashboard() {
       value: stats?.total_keywords ?? 0,
       active: stats?.active_keywords ?? 0,
       icon: Zap,
-      color: 'from-[#ff3366] to-[#ff6b35]',
+      color: '#ff3366',
+      gradient: 'from-[#ff3366]/20 to-[#ff3366]/5',
+      borderColor: '#ff3366/30',
     },
     {
       title: '发现热点',
       value: stats?.total_hotspots ?? 0,
       subtext: `今日 +${stats?.today_hotspots ?? 0}`,
       icon: Flame,
-      color: 'from-[#ff6b35] to-[#9933ff]',
+      color: '#ff6b35',
+      gradient: 'from-[#ff6b35]/20 to-[#ff6b35]/5',
+      borderColor: '#ff6b35/30',
     },
     {
       title: '系统通知',
       value: stats?.system_notifications ?? 0,
       subtext: '已推送',
-      icon: Activity,
-      color: 'from-[#9933ff] to-[#00d4ff]',
+      icon: Bell,
+      color: '#9933ff',
+      gradient: 'from-[#9933ff]/20 to-[#9933ff]/5',
+      borderColor: '#9933ff/30',
     },
     {
       title: '邮件通知',
       value: stats?.email_notifications ?? 0,
       subtext: '已发送',
       icon: Mail,
-      color: 'from-[#00d4ff] to-[#00ff88]',
+      color: '#00d4ff',
+      gradient: 'from-[#00d4ff]/20 to-[#00d4ff]/5',
+      borderColor: '#00d4ff/30',
     },
   ];
 
@@ -324,39 +332,54 @@ export function Dashboard() {
         </form>
       </Card>
 
-      {/* Stats Grid - 改为4列 */}
+      {/* Stats Grid - 改为4列 Bento Grid 风格 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card, index) => (
           <motion.div
             key={card.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
+            transition={{ duration: 0.4, delay: index * 0.1 }}
           >
-            <Card className="relative overflow-hidden">
-              <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${card.color} opacity-10 rounded-bl-full`} />
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[#9ca3af] text-sm">{card.title}</p>
-                  <p className="text-3xl font-bold text-[#f0f0f5] mt-1">
-                    {loading ? '-' : card.value}
-                  </p>
-                  {card.active !== undefined && (
-                    <p className="text-sm text-green-400 mt-1">
-                      {card.active} 个活跃中
+            <div className="relative group">
+              {/* 渐变边框效果 */}
+              <div className="absolute inset-0 bg-gradient-to-r opacity-50 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(90deg, ${card.color}, transparent, ${card.color})` }} />
+              <div className="absolute inset-0 bg-[#12121a]" />
+
+              <Card className={`relative bg-transparent border-0 p-5 ${index === 0 ? 'md:col-span-1 lg:col-span-1' : ''}`}>
+                {/* 装饰角标 */}
+                <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-bl-full`} />
+
+                <div className="flex items-start justify-between relative z-10">
+                  <div>
+                    <p className="text-[#9ca3af] text-sm font-medium">{card.title}</p>
+                    <p className="text-4xl font-bold mt-2" style={{ color: card.color }}>
+                      {loading ? '-' : card.value}
                     </p>
-                  )}
-                  {card.subtext && (
-                    <p className="text-sm text-[#6b7280] mt-1">
-                      {card.subtext}
-                    </p>
-                  )}
+                    {card.active !== undefined && (
+                      <p className="text-sm text-green-400 mt-2 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        {card.active} 个活跃中
+                      </p>
+                    )}
+                    {card.subtext && (
+                      <p className="text-sm text-[#6b7280] mt-2">
+                        {card.subtext}
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className="p-3 rounded-xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${card.color}20, ${card.color}10)`,
+                      border: `1px solid ${card.borderColor}`
+                    }}
+                  >
+                    <card.icon className="w-5 h-5" style={{ color: card.color }} />
+                  </div>
                 </div>
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${card.color}`}>
-                  <card.icon className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </div>
           </motion.div>
         ))}
       </div>

@@ -72,7 +72,6 @@ export function Hotspots() {
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
 
   // 批量删除状态
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -159,7 +158,6 @@ export function Hotspots() {
       const result = await hotspotsApi.getAll(params);
       setHotspots(result.data);
       setTotalPages(result.pagination.total_pages);
-      setTotal(result.pagination.total);
     } catch (error) {
       console.error('Failed to load hotspots:', error);
     } finally {
